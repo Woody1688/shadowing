@@ -1,0 +1,1668 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Shadow Loop 跟讀機</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: practice console — video + sentence stage left, sentence list right; vocab book as second view; one column on phones */
+:root{
+  --bg:#ECEFF2; --surface:#FFFFFF; --sunk:#E2E7EB; --ink:#15212B; --muted:#5B6B77; --line:#D2DAE0;
+  --accent:#1F5BC9; --accent-ink:#FFFFFF; --accent-soft:#DDE7FA;
+  --rec:#CC3F27; --ok:#1E8556; --star:#C98A00; --screen:#0A0F14; --claude:#B4562E;
+  --role-s:#1F5BC9; --role-v:#C2362B; --role-o:#1E8556; --role-c:#7A3FB8; --role-m:#A86B00; --role-x:#5B6B77;
+  --f-display:"Bricolage Grotesque","Noto Sans TC",system-ui,sans-serif;
+  --f-ui:"IBM Plex Sans","Noto Sans TC",system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-read:"Literata",Georgia,"Times New Roman",serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E151B; --surface:#16212A; --sunk:#0A1015; --ink:#E5ECF1; --muted:#94A4B0; --line:#26343F;
+  --accent:#7AA5F5; --accent-ink:#0A1015; --accent-soft:#1A2A45;
+  --rec:#F2705A; --ok:#4FC28C; --star:#F0B83A; --screen:#000; --claude:#E8916A;
+  --role-s:#7AA5F5; --role-v:#F2806E; --role-o:#4FC28C; --role-c:#B990EE; --role-m:#E5B04A; --role-x:#94A4B0;
+  color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0E151B; --surface:#16212A; --sunk:#0A1015; --ink:#E5ECF1; --muted:#94A4B0; --line:#26343F;
+  --accent:#7AA5F5; --accent-ink:#0A1015; --accent-soft:#1A2A45;
+  --rec:#F2705A; --ok:#4FC28C; --star:#F0B83A; --screen:#000; --claude:#E8916A;
+  --role-s:#7AA5F5; --role-v:#F2806E; --role-o:#4FC28C; --role-c:#B990EE; --role-m:#E5B04A; --role-x:#94A4B0;
+  color-scheme:dark;}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:max(14px,env(safe-area-inset-top,0px)) 40px}
+[hidden]{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h2,h3,h4{margin:0}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.brand{display:flex;align-items:baseline;gap:10px;flex:0 0 auto}
+.brand b{font:800 1.45rem/1 var(--f-display);letter-spacing:-.02em}
+.brand span{font-size:.8rem;color:var(--muted)}
+.tabs{display:flex;gap:4px;background:var(--sunk);padding:3px;border-radius:999px}
+.tabs button{border:0;background:none;border-radius:999px;padding:6px 14px;font-weight:500;color:var(--muted)}
+.tabs button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.urlform{display:flex;gap:8px;flex:1 1 340px;min-width:0}
+.urlform input{flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:9px 14px;font-weight:500;white-space:nowrap;text-decoration:none;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.claude{border-color:var(--claude);color:var(--claude)}
+.btn.claude.solid{background:var(--claude);color:var(--surface)}
+.btn.small{padding:5px 10px;font-size:.85rem}
+.btn.on{background:var(--accent-soft);border-color:var(--accent)}
+.gear{position:relative}
+.gear i{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.gear i.ok{background:var(--ok)}
+.note{font-size:.85rem;color:var(--muted)}
+.err{color:var(--rec);font-size:.88rem;margin:0}
+.banner{border:1px solid var(--rec);background:var(--surface);border-radius:var(--r);padding:10px 14px;font-size:.88rem}
+.banner b{color:var(--rec)}
+
+.setpanel{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:.82rem;color:var(--muted)}
+.field input[type=text]{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);min-width:0}
+.status{display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+.status span::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--muted);vertical-align:middle}
+.status span.ok::before{background:var(--ok)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:14px;min-width:0}
+.vhead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.vtitle{font:600 1rem/1.35 var(--f-ui);margin:0;flex:1 1 240px;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 11px;font-size:.82rem;white-space:nowrap}
+.chip b{font-weight:600}
+.player{position:relative;aspect-ratio:16/9;max-width:100%;background:var(--screen);border-radius:var(--r);overflow:hidden}
+.player iframe,.player>div{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.card-h h3{font:700 1rem/1.2 var(--f-display)}
+.meta{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.dots{display:flex;align-items:center;gap:5px}
+.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--accent);display:block}
+.dots i.on{background:var(--accent)}
+.side-line{font:400 .95rem/1.45 var(--f-read);color:var(--muted);margin:0;min-height:1.4em;cursor:pointer}
+.now{font:500 clamp(1.25rem,2.4vw,1.7rem)/1.5 var(--f-read);margin:0;text-wrap:pretty;transition:filter .2s}
+.now .wd{cursor:pointer;border-radius:4px;padding:0 1px}
+.now .wd:hover{background:var(--accent-soft)}
+.now .wd.known{text-decoration:underline;text-decoration-color:var(--star);text-decoration-thickness:2px;text-underline-offset:4px}
+.now.blind{filter:blur(7px);user-select:none;cursor:pointer}
+.now.blind.peek{filter:none}
+.zh{font-size:1rem;color:var(--muted);margin:0}
+.gap{display:flex;align-items:center;gap:10px}
+.gap .bar{flex:1;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.gap .bar span{display:block;height:100%;width:0;background:var(--ok)}
+.gap b{color:var(--ok);font-size:.88rem;min-width:7.5em}
+.toolrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px}
+
+.transport{display:flex;align-items:center;justify-content:center;gap:14px}
+.ico{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface)}
+.ico svg{width:20px;height:20px;fill:currentColor}
+.ico.big{width:62px;height:62px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.ico.big svg{width:26px;height:26px}
+.ico.rec{color:var(--rec)}
+.ico.rec.on{background:var(--rec);color:var(--surface);border-color:var(--rec);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.ico.rec.on{animation:none}.now{transition:none}.loading::before{animation:none}}
+.spk{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;border:1px solid var(--line);background:var(--surface);vertical-align:middle;padding:0;color:var(--ink)}
+.spk svg{width:14px;height:14px;fill:currentColor}
+
+.settings{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 14px;align-items:center}
+.settings>label{font-size:.82rem;color:var(--muted);letter-spacing:.02em}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:.85rem}
+.seg button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:600}
+.checks{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.88rem}
+.checks label{display:flex;align-items:center;gap:6px}
+.recrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+details.tune summary{cursor:pointer;font-size:.88rem;color:var(--muted)}
+.tunebox{display:flex;flex-direction:column;gap:10px;padding-top:10px}
+.tunerow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tunerow .mono{min-width:5.5em}
+textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);resize:vertical}
+.tunebox textarea{min-height:64px;font-family:var(--f-read)}
+.keys{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 14px}
+kbd{font-family:var(--f-mono);font-size:.75rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface)}
+
+/* analysis */
+.chunks{display:flex;flex-wrap:wrap;gap:10px 6px;align-items:flex-start}
+.chunk{display:flex;flex-direction:column;align-items:center;gap:2px;max-width:100%}
+.chunk span{font:500 1.05rem/1.4 var(--f-read);padding:2px 6px;border-bottom:3px solid var(--role-x);text-align:center}
+.chunk small{font-size:.72rem;color:var(--role-x);font-weight:600;letter-spacing:.03em}
+.chunk.s span{border-color:var(--role-s)} .chunk.s small{color:var(--role-s)}
+.chunk.v span{border-color:var(--role-v)} .chunk.v small{color:var(--role-v)}
+.chunk.o span{border-color:var(--role-o)} .chunk.o small{color:var(--role-o)}
+.chunk.c span{border-color:var(--role-c)} .chunk.c small{color:var(--role-c)}
+.chunk.m span{border-color:var(--role-m)} .chunk.m small{color:var(--role-m)}
+.sec{display:flex;flex-direction:column;gap:6px}
+.sec h4{font-size:.8rem;color:var(--muted);font-weight:600;letter-spacing:.04em}
+.sec ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:5px}
+.sec p{margin:0}
+.ex{display:flex;flex-direction:column;gap:2px}
+.ex .en{font-family:var(--f-read)}
+.ex .cn{font-size:.88rem;color:var(--muted)}
+.pattern{font-family:var(--f-mono);font-size:.9rem;background:var(--sunk);border-radius:6px;padding:2px 8px;align-self:flex-start}
+.src{font-size:.75rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.src.cl{color:var(--claude);border-color:var(--claude)}
+.loading{color:var(--muted);font-size:.9rem;display:flex;align-items:center;gap:8px}
+.loading::before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.welcome h2{font:800 1.5rem/1.2 var(--f-display);text-wrap:balance;letter-spacing:-.01em}
+.steps{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+.recent{display:flex;flex-wrap:wrap;gap:8px}
+.recent button{max-width:100%;overflow:hidden;text-overflow:ellipsis;text-align:left}
+
+/* sentence list */
+.side{background:var(--surface);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-width:0;position:sticky;top:max(12px,env(safe-area-inset-top,0px))}
+@media (max-width:900px){.side{position:static}}
+.side-head{padding:14px 16px 10px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line)}
+.side-head .row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.side-head h3{font:700 1rem/1.2 var(--f-display)}
+.prog{height:4px;border-radius:2px;background:var(--sunk);overflow:hidden}
+.prog span{display:block;height:100%;background:var(--ok);width:0}
+details.imp summary{cursor:pointer;font-size:.88rem;font-weight:600;color:var(--accent)}
+.impbox{display:flex;flex-direction:column;gap:8px;padding-top:8px}
+.impbox textarea{min-height:110px;font:.82rem/1.45 var(--f-mono)}
+.impbox .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.list{list-style:none;margin:0;padding:6px;overflow-y:auto;max-height:calc(100vh - 250px);position:relative}
+@media (max-width:900px){.list{max-height:62vh}}
+.list li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:2px 10px;padding:9px 10px;border-radius:8px;cursor:pointer;align-items:start}
+.list li:hover{background:var(--bg)}
+.list li.cur{background:var(--accent-soft)}
+.list .ts{font:.75rem/1.9 var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.list .tx{font:400 .95rem/1.5 var(--f-read);min-width:0;overflow-wrap:anywhere}
+.list .lz{grid-column:2;font-size:.82rem;color:var(--muted)}
+.list .tools{display:flex;align-items:center;gap:6px}
+.list .done{font:.7rem var(--f-mono);color:var(--ok)}
+.star{border:0;background:none;padding:2px;font-size:1rem;line-height:1;color:var(--line)}
+.star.on{color:var(--star)}
+.empty{padding:22px 16px;color:var(--muted);font-size:.9rem}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(10,15,20,.35);z-index:40}
+.sheet{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(600px,100%);max-height:82vh;overflow-y:auto;z-index:41;
+  background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:16px 16px 0 0;
+  padding:18px max(18px,env(safe-area-inset-left,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:12px;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.sheet.tall{max-height:90vh;width:min(720px,100%)}
+.hw{font:600 1.7rem/1.1 var(--f-read)}
+.hwrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pos{font-size:.85rem;color:var(--muted);font-style:italic}
+.ipa{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;font-family:var(--f-mono);font-size:.9rem}
+.ipa span{display:inline-flex;gap:6px;align-items:center}
+.zhbig{font-size:1.1rem;font-weight:500;margin:0}
+.zhpos{display:flex;flex-direction:column;gap:3px;font-size:.92rem}
+.zhpos b{font-weight:600;color:var(--muted);font-size:.8rem;margin-right:6px}
+.defs{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;font-family:var(--f-read);font-size:.95rem}
+.defs .exx{display:block;color:var(--muted);font-style:italic;font-size:.9rem}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.85rem;background:var(--bg)}
+.tag i{font-style:normal;color:var(--muted);font-size:.78rem;margin-left:4px}
+mark{background:var(--accent-soft);color:inherit;border-radius:3px;padding:0 2px}
+.step{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.step h4{font-size:.9rem;font-weight:600}
+.step h4 span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--claude);color:var(--surface);font-size:.75rem;margin-right:8px}
+.helper textarea{min-height:120px;font:.8rem/1.45 var(--f-mono)}
+
+/* vocab */
+.vgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:20px;align-items:start}
+@media (max-width:900px){.vgrid{grid-template-columns:minmax(0,1fr)}}
+.vlist{list-style:none;margin:0;padding:6px;overflow-y:auto;max-height:calc(100vh - 290px)}
+@media (max-width:900px){.vlist{max-height:45vh}}
+.vlist li{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;align-items:baseline}
+.vlist li:hover{background:var(--bg)}
+.vlist li.cur{background:var(--accent-soft)}
+.vlist b{font:600 1rem var(--f-read)}
+.vlist span{font-size:.82rem;color:var(--muted);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vsearch{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);width:100%}
+.review{align-items:center;text-align:center;gap:14px;padding-block:28px}
+.review .hw{font-size:2.2rem}
+.review .ctx{font:400 1.05rem/1.5 var(--f-read);max-width:46ch;margin:0}
+.grades{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:50;background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:.88rem;max-width:calc(100% - 32px);box-shadow:0 4px 18px rgba(0,0,0,.2)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Shadow Loop</b><span>跟讀機</span></div>
+    <nav class="tabs" aria-label="切換畫面">
+      <button id="tabPractice" class="on">練習</button>
+      <button id="tabVocab">生字本 <span class="mono" id="vcount">0</span></button>
+    </nav>
+    <form class="urlform" id="urlform">
+      <input id="url" type="url" inputmode="url" placeholder="貼上 YouTube 網址" aria-label="YouTube 網址" autocomplete="off">
+      <button class="btn primary" type="submit">載入</button>
+    </form>
+  </header>
+  <div class="err" id="urlerr" hidden></div>
+  <div class="banner" id="filewarn" hidden><b>注意：</b>目前是直接打開檔案（file://），YouTube 會拒絕播放。請把 index.html 上傳到 GitHub Pages 或 Netlify，再用那個網址開啟（見使用說明）。</div>
+
+
+  <!-- ===== practice view ===== -->
+  <div id="viewPractice">
+  <div class="grid">
+    <section class="stage">
+      <div class="card welcome" id="welcome">
+        <h2>貼上一支 YouTube 影片，逐句跟讀</h2>
+        <ol class="steps">
+          <li>在上方貼上 YouTube 網址，按「載入」。</li>
+          <li>匯入字幕：在 YouTube 影片頁按「Shadow Loop 字幕」書籤（設定方式在右側「字幕來源」），或把轉錄稿貼上。</li>
+          <li>點任一句子：會自動重複播放，每遍之後留一段停頓讓你跟著說。點句中單字可以查詞、加入生字本。</li>
+          <li>想要更自然的斷句、翻譯、文法說明或口音判斷，用「Claude 助手」交給你的 Claude 對話完成。</li>
+        </ol>
+        <div id="recentwrap" hidden>
+          <p class="note" style="margin:0 0 6px">最近練習</p>
+          <div class="recent" id="recent"></div>
+        </div>
+      </div>
+
+      <div id="work" hidden>
+        <div class="stage">
+          <div class="vhead">
+            <h1 class="vtitle" id="vtitle">載入中…</h1>
+            <button class="chip" id="accchip" title="口音">口音：<b id="acclabel">未標記</b></button>
+          </div>
+          <div class="player"><div id="yt"></div></div>
+
+          <div class="card" id="sentcard">
+            <div class="meta">
+              <span class="mono" id="segpos">—</span>
+              <span class="dots" id="dots"></span>
+            </div>
+            <p class="side-line" id="prevline"></p>
+            <p class="now" id="nowline">選一個句子開始練習。</p>
+            <p class="zh" id="nowzh" hidden></p>
+            <p class="side-line" id="nextline"></p>
+            <div class="gap" id="gapbox" hidden><b id="gaplabel">換你說</b><div class="bar"><span id="gapbar"></span></div></div>
+
+            <div class="transport">
+              <button class="ico" id="bprev" title="上一句（←）" aria-label="上一句"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+              <button class="ico" id="breplay" title="從頭重練這句（R）" aria-label="重練這句"><svg viewBox="0 0 24 24"><path d="M12 5V2L7 6l5 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z"/></svg></button>
+              <button class="ico big" id="bplay" title="開始／停止循環（空白鍵）" aria-label="開始循環"><svg viewBox="0 0 24 24" id="playicon"><path d="M7 4v16l13-8z"/></svg></button>
+              <button class="ico rec" id="brec" title="錄下我的跟讀（V）" aria-label="錄音"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.9V21h2v-2.1a7 7 0 0 0 6-6.9z"/></svg></button>
+              <button class="ico" id="bnext" title="下一句（→）" aria-label="下一句"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+            </div>
+
+            <div class="recrow" id="recrow" hidden>
+              <button class="btn small" id="bmine">▶ 我的錄音</button>
+              <button class="btn small" id="bcompare">原音 → 我的</button>
+              <span class="note">建議戴耳機，避免錄進原音。</span>
+            </div>
+            <audio id="myaudio" hidden></audio>
+            <div class="toolrow">
+              <button class="btn small" id="bzh">中文翻譯：關</button>
+              <button class="btn small" id="banalyze">句構</button>
+              <button class="btn small claude" id="bclaude">Claude 助手</button>
+              <span class="note">點句中單字可查詞</span>
+            </div>
+          </div>
+
+          <div class="card" id="anacard" hidden></div>
+          <div class="card" id="acccard" hidden></div>
+
+          <div class="card">
+            <div class="settings">
+              <label>速度</label><div class="seg" id="sspeed"></div>
+              <label>重複</label><div class="seg" id="sreps"></div>
+              <label>停頓</label><div class="seg" id="sgap"></div>
+            </div>
+            <div class="checks">
+              <label><input type="checkbox" id="cauto"> 練完自動下一句</label>
+              <label><input type="checkbox" id="cblind"> 隱藏字幕（點一下偷看）</label>
+              <label><input type="checkbox" id="crecsync"> 錄音時同步播原句</label>
+            </div>
+            <div class="recrow">
+              <button class="btn small" id="bfree">▶ 整段播放（不循環）</button>
+              <button class="btn small" id="bmark">標記起點</button>
+              <span class="note" id="marknote"></span>
+            </div>
+            <details class="tune" id="tune">
+              <summary>調整這一句（起訖時間、文字）</summary>
+              <div class="tunebox">
+                <div class="tunerow"><span class="note">開始</span><span class="mono" id="ts_s">—</span>
+                  <button class="btn small" data-adj="s,-0.2">−0.2s</button><button class="btn small" data-adj="s,0.2">+0.2s</button>
+                  <button class="btn small" data-adj="s,now">設為目前時間</button></div>
+                <div class="tunerow"><span class="note">結束</span><span class="mono" id="ts_e">—</span>
+                  <button class="btn small" data-adj="e,-0.2">−0.2s</button><button class="btn small" data-adj="e,0.2">+0.2s</button>
+                  <button class="btn small" data-adj="e,now">設為目前時間</button></div>
+                <textarea id="edittext" aria-label="句子文字"></textarea>
+                <div class="tunerow">
+                  <button class="btn small" id="bmerge">與下一句合併</button>
+                  <button class="btn small" id="bdel">刪除這句</button>
+                  <span class="note" id="delconfirm"></span>
+                </div>
+              </div>
+            </details>
+            <div class="keys">
+              <span><kbd>空白</kbd> 開始/停止</span><span><kbd>←</kbd><kbd>→</kbd> 上/下一句</span><span><kbd>R</kbd> 重練</span>
+              <span><kbd>T</kbd> 中文</span><span><kbd>A</kbd> 句構</span><span><kbd>C</kbd> Claude 助手</span><span><kbd>H</kbd> 隱藏字幕</span><span><kbd>S</kbd> 星號</span><span><kbd>M</kbd> 標記</span><span><kbd>V</kbd> 錄音</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <div class="side-head">
+        <div class="row">
+          <h3>句子</h3>
+          <span class="note mono" id="progtext">0 / 0 已練</span>
+        </div>
+        <div class="prog"><span id="progbar"></span></div>
+        <div class="row">
+          <div class="seg" id="sfilter"><button data-f="all" class="on">全部</button><button data-f="star">★ 星號</button><button data-f="todo">未練</button></div>
+        </div>
+        <details class="imp" id="imp">
+          <summary>字幕來源</summary>
+          <div class="impbox">
+            <p class="note" style="margin:0" id="impstatus"></p>
+            <div class="sec">
+              <h4>方法一：一鍵送字幕（電腦版瀏覽器）</h4>
+              <div class="row"><a class="btn small primary" id="bmlink" href="#">Shadow Loop 字幕</a></div>
+              <p class="note" style="margin:0">第一次使用：把上面的按鈕「拖曳」到瀏覽器的書籤列。之後在 YouTube 影片頁按這個書籤，它會打開轉錄稿、把字幕送到這裡。</p>
+            </div>
+            <div class="sec">
+              <h4>方法二：手動貼上</h4>
+              <p class="note" style="margin:0">電腦版 YouTube 說明欄 →「顯示轉錄稿」→ 選取全部時間與文字複製，貼在下方（也可以在本頁任意處直接 Ctrl+V）。或上傳 .srt / .vtt。</p>
+            </div>
+            <textarea id="imptext" placeholder="0:00&#10;Hi everyone, welcome back to the channel.&#10;0:03&#10;Today we're talking about..."></textarea>
+            <div class="row"><input type="file" id="impfile" accept=".srt,.vtt,.txt,text/plain" aria-label="上傳字幕檔"></div>
+            <div class="row">
+              <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="cmerge" checked> 合併成完整句子</label>
+            </div>
+            <div class="row"><button class="btn small" id="bimport">套用字幕</button><span class="note" id="impmsg"></span></div>
+            <div class="row"><button class="btn small claude" id="bpunct">用 Claude 補標點斷句</button><span class="note">自動字幕沒有標點時使用</span></div>
+          </div>
+        </details>
+      </div>
+      <ul class="list" id="list"></ul>
+      <div class="empty" id="listempty">還沒有句子。先載入影片。</div>
+    </aside>
+  </div>
+  </div>
+
+  <!-- ===== vocab view ===== -->
+  <div id="viewVocab" hidden>
+    <div class="vgrid">
+      <aside class="side">
+        <div class="side-head">
+          <div class="row"><h3>生字本</h3><span class="note mono" id="duetext"></span></div>
+          <input class="vsearch" id="vsearch" type="search" placeholder="搜尋單字或中文" aria-label="搜尋生字">
+          <div class="row">
+            <div class="seg" id="vsort"><button data-s="new" class="on">最新</button><button data-s="az">A–Z</button><button data-s="due">待複習</button></div>
+          </div>
+          <div class="row" style="justify-content:flex-start">
+            <button class="btn small primary" id="breview">開始複習</button>
+            <button class="btn small claude" id="bvclaude">請 Claude 深度解說</button>
+            <button class="btn small" id="bexport">匯出 CSV</button>
+          </div>
+          <div class="row" style="justify-content:flex-start">
+            <button class="btn small" id="bbackup">備份全部資料</button>
+            <button class="btn small" id="brestore">還原備份</button>
+            <input type="file" id="restorefile" accept=".json,application/json" hidden>
+          </div>
+          <p class="note" style="margin:0">資料存在這個瀏覽器裡。要換到手機或其他電腦，先備份，再到另一台裝置還原。</p>
+        </div>
+        <ul class="vlist" id="vlist"></ul>
+        <div class="empty" id="vempty">還沒有生字。練習時點句子裡的單字，按「加入生字本」。</div>
+      </aside>
+      <section class="card" id="vdetail">
+        <p class="note">選一個單字查看完整說明。</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="單字" hidden></div>
+<div class="sheet tall helper" id="helper" role="dialog" aria-modal="true" aria-label="Claude 助手" hidden></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s);
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){toast('瀏覽器儲存空間已滿，部分資料沒有存到。');return false}}
+};
+function h(tag,attrs,...kids){
+  const el=document.createElement(tag);
+  if(attrs)for(const [k,v] of Object.entries(attrs)){
+    if(v==null||v===false)continue;
+    if(k==='class')el.className=v; else if(k==='text')el.textContent=v;
+    else if(k.startsWith('on'))el.addEventListener(k.slice(2),v); else el.setAttribute(k,v===true?'':v);
+  }
+  for(const c of kids.flat(3)){if(c==null||c===false||c==='')continue;el.appendChild(typeof c==='object'?c:document.createTextNode(String(c)))}
+  return el;
+}
+const arr=x=>Array.isArray(x)?x:[];
+
+/* ---------- state ---------- */
+let player=null, playerReady=false, apiReady=false, pendingId=null;
+let vid=null, meta={}, segs=[], cur=-1;
+const cfg=Object.assign({speed:1,reps:3,gap:1,auto:true,blind:false,recSync:true,merge:true,zh:false},store.get('sl:cfg',{}));
+let mode='idle';
+let repsDone=0, segStartedAt=0, gapTimer=null, gapEndAt=0, gapDur=0, onceCb=null;
+let filter='all', markStart=null, delArmed=false;
+const recs=new Map();
+let mediaRec=null, micStream=null, recIdx=-1;
+let vocab=store.get('sl:vocab',[]);
+for(const v of vocab){if(v.info&&v.info.zh_context&&!v.ai){v.ai=v.info;v.info=null}}  // v2 → v3
+const dictCache=new Map();
+let busy={zh:false};
+
+if(location.protocol==='file:')$('#filewarn').hidden=false;
+
+/* ---------- small helpers ---------- */
+function fmt(t){if(!isFinite(t)||t<0)t=0;const m=Math.floor(t/60),s=t-m*60;return m+':'+(s<10?'0':'')+s.toFixed(1)}
+function toSec(str){const p=str.trim().replace(',','.').split(':').map(Number);let s=0;for(const v of p)s=s*60+(isNaN(v)?0:v);return s}
+function clean(t){return t.replace(/<[^>]+>/g,'').replace(/\[(music|applause|laughter|音樂|掌聲|笑聲)\]/gi,'').replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g,' ').trim()}
+function saveCfg(){store.set('sl:cfg',cfg)}
+function save(){if(vid){store.set('sl:v:'+vid,{segs,meta});saveRecent()}}
+function saveVocab(){store.set('sl:vocab',vocab);$('#vcount').textContent=vocab.length}
+let toastT=null;
+function toast(msg,ms=3200){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);if(ms)toastT=setTimeout(()=>t.hidden=true,ms)}
+function showErr(m){const e=$('#urlerr');e.textContent=m;e.hidden=!m}
+const SPK='<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>';
+function spk(text,lang,label,audio){const b=h('button',{class:'spk',title:label||'朗讀','aria-label':label||'朗讀',onclick:e=>{e.stopPropagation();play(text,lang,audio)}});b.innerHTML=SPK;return b}
+function play(text,lang,audio){
+  if(audio){const a=new Audio(audio);a.play().catch(()=>speak(text,lang));return}
+  speak(text,lang);
+}
+function speak(text,lang='en-US'){
+  if(!window.speechSynthesis){toast('這個瀏覽器不支援朗讀。');return}
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);u.lang=lang;u.rate=0.9;
+  const vs=speechSynthesis.getVoices();
+  const v=vs.find(v=>v.lang.replace('_','-')===lang)||vs.find(v=>v.lang.startsWith('en'));
+  if(v)u.voice=v; speechSynthesis.speak(u);
+}
+const POS_ZH={noun:'名詞',verb:'動詞',adjective:'形容詞',adverb:'副詞',pronoun:'代名詞',preposition:'介系詞',conjunction:'連接詞',interjection:'感嘆詞',exclamation:'感嘆詞',determiner:'限定詞',article:'冠詞',abbreviation:'縮寫',prefix:'字首',suffix:'字尾',numeral:'數詞'};
+const posZh=p=>POS_ZH[String(p||'').toLowerCase()]||p||'';
+
+function parseId(u){
+  u=(u||'').trim();
+  if(/^[\w-]{11}$/.test(u))return u;
+  try{
+    const x=new URL(u.startsWith('http')?u:'https://'+u);
+    if(/youtu\.be$/.test(x.hostname))return x.pathname.slice(1,12)||null;
+    if(!/youtube\.com$|youtube-nocookie\.com$/.test(x.hostname))return null;
+    const v=x.searchParams.get('v'); if(v&&/^[\w-]{11}$/.test(v))return v;
+    const m=x.pathname.match(/\/(shorts|embed|live|v)\/([\w-]{11})/); if(m)return m[2];
+  }catch(e){}
+  return null;
+}
+
+/* ---------- subtitle parsing & sentence building ---------- */
+function parseSRT(text){
+  const out=[]; const blocks=text.replace(/\r/g,'').split(/\n\s*\n/);
+  for(const b of blocks){
+    const lines=b.split('\n'); const k=lines.findIndex(l=>l.includes('-->')); if(k<0)continue;
+    const [a,c]=lines[k].split('-->');
+    const s=toSec(a.trim().split(/\s+/)[0]), e=toSec(c.trim().split(/\s+/)[0]);
+    for(const raw of lines.slice(k+1)){
+      const t=clean(raw); if(!t)continue;
+      const dup=out.slice(-2).find(o=>o.t===t);
+      if(dup){dup.e=Math.max(dup.e,e);continue}
+      out.push({s,e,t});
+    }
+  }
+  return out;
+}
+function parseTranscript(text){
+  const lines=text.replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(Boolean);
+  const tsRe=/^((?:\d{1,2}:)?\d{1,2}:\d{2}(?:\.\d+)?)(?:\s+(.+))?$/;
+  const label=/^(\d+\s*(hours?|minutes?|seconds?|小時|分鐘|分|秒鐘|秒)[,，\s]*)+$/i;
+  const out=[]; let c=null;
+  for(const l of lines){
+    if(label.test(l))continue;
+    const m=l.match(tsRe);
+    if(m){if(c&&c.t)out.push(c);c={s:toSec(m[1]),t:m[2]?clean(m[2]):''}}
+    else if(c){const t=clean(l);if(t)c.t+=(c.t?' ':'')+t}
+  }
+  if(c&&c.t)out.push(c);
+  for(let i=0;i<out.length;i++)out[i].e=i<out.length-1?out[i+1].s:out[i].s+5;
+  return out;
+}
+function parseTimed(text){return /-->/.test(text)?parseSRT(text):parseTranscript(text)}
+const END_RE=/[.?!…]["'”’)\]]*$/;
+function splitPieces(g){
+  const parts=g.t.split(/(?<=[.?!…]["'”’)\]]*)\s+/).filter(Boolean);
+  if(parts.length<2)return [g];
+  const total=parts.reduce((n,p)=>n+p.length,0), dur=g.e-g.s; let acc=0; const out=[];
+  for(const p of parts){const s=g.s+dur*acc/total;acc+=p.length;out.push({s,e:g.s+dur*acc/total,t:p})}
+  return out;
+}
+function mergeSentences(list,maxDur=14){
+  const out=[]; let buf=null;
+  for(const g of list.flatMap(splitPieces)){
+    if(!buf)buf={...g}; else {buf.t+=' '+g.t; buf.e=g.e;}
+    if(END_RE.test(buf.t)||buf.e-buf.s>=maxDur){out.push(buf);buf=null}
+  }
+  if(buf)out.push(buf);
+  return out;
+}
+/* captions without punctuation: cut at pauses or after ~7 s */
+function mergeByPause(list,maxDur=7){
+  const out=[]; let buf=null;
+  for(let k=0;k<list.length;k++){
+    const g=list[k];
+    if(!buf)buf={...g}; else {buf.t+=' '+g.t; buf.e=g.e;}
+    const nxt=list[k+1], pause=nxt?nxt.s-g.e:9;
+    if(END_RE.test(buf.t)||buf.e-buf.s>=maxDur||pause>=0.5){out.push(buf);buf=null}
+  }
+  if(buf)out.push(buf);
+  return out;
+}
+function hasPunctuation(list){
+  const txt=list.map(g=>g.t).join(' ');
+  return (txt.match(/[.?!]/g)||[]).length>=Math.max(2,txt.split(/\s+/).length/60);
+}
+function toWords(frags){
+  const words=[];
+  for(const f of frags){
+    const ws=clean(f.t).split(/\s+/).filter(Boolean); if(!ws.length)continue;
+    const total=ws.reduce((n,w)=>n+w.length+1,0); let acc=0;
+    for(const w of ws){words.push({w,s:f.s+(f.e-f.s)*acc/total});acc+=w.length+1}
+  }
+  return words;
+}
+const norm=w=>w.toLowerCase().replace(/[’‘]/g,"'").replace(/[^a-z0-9']/g,'');
+/* map each punctuated line back to the original word stream to recover its start time */
+function alignSentences(lines,words){
+  let p=0; const out=[];
+  for(const line of lines){
+    const lw=line.split(/\s+/).map(norm).filter(Boolean); if(!lw.length)continue;
+    let first=-1;
+    for(let k=p;k<Math.min(words.length,p+80);k++){
+      if(norm(words[k].w)===lw[0]&&(lw.length<2||(k+1<words.length&&norm(words[k+1].w)===lw[1]))){first=k;break}
+    }
+    if(first<0)first=p;
+    let q=first;
+    for(const n of lw){for(let k=q;k<Math.min(words.length,q+8);k++)if(norm(words[k].w)===n){q=k+1;break}}
+    if(first>=words.length)break;
+    out.push({t:line,i:first}); p=Math.max(q,first+1);
+  }
+  return {items:out,p:Math.min(p,words.length)};
+}
+function parseJSON(t){
+  t=String(t).trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,'');
+  try{return JSON.parse(t)}catch(e){}
+  const cands=[['[',']'],['{','}']].map(([a,b])=>[t.indexOf(a),t.lastIndexOf(b)]).filter(([i,k])=>i>=0&&k>i).sort((x,y)=>x[0]-y[0]);
+  for(const [i,k] of cands){try{return JSON.parse(t.slice(i,k+1))}catch(e){}}
+  throw new Error('看不懂貼上的內容。請複製 Claude 回覆中「整個 code block」再貼一次。');
+}
+
+/* ---------- free web services, called straight from the browser ---------- */
+async function getJSON(url){
+  let r; try{r=await fetch(url)}catch(e){const x=new Error('連不上服務（網路被擋或離線）');x.net=true;throw x}
+  if(!r.ok){const x=new Error('HTTP '+r.status);x.status=r.status;throw x}
+  return r.json();
+}
+const GTX='https://translate.googleapis.com/translate_a/single';
+function gtx(text,dts=['t']){return getJSON(GTX+'?'+new URLSearchParams([['client','gtx'],['sl','en'],['tl','zh-TW'],...dts.map(d=>['dt',d]),['q',text]]))}
+const gtxText=d=>arr(d&&d[0]).map(x=>x&&x[0]||'').join('');
+async function myMemory(text){
+  const j=await getJSON('https://api.mymemory.translated.net/get?langpair=en|zh-TW&q='+encodeURIComponent(text.slice(0,480)));
+  const t=j&&j.responseData&&j.responseData.translatedText;
+  if(!t||Number(j.responseStatus)!==200)throw new Error((j&&j.responseDetails)||'MyMemory 翻譯失敗');
+  return t;
+}
+let mtProvider=null; /* 'gtx' or 'mm', remembered after the first success */
+async function translateBatch(texts){
+  if(mtProvider!=='mm'){
+    try{
+      const parts=gtxText(await gtx(texts.join('\n'))).split('\n').map(x=>x.trim());
+      if(parts.length===texts.length){mtProvider='gtx';return parts}
+      const out=[];for(const t of texts)out.push(gtxText(await gtx(t)).trim());
+      mtProvider='gtx';return out;
+    }catch(e){if(mtProvider==='gtx')throw e}
+  }
+  const out=[];for(const t of texts)out.push(await myMemory(t));
+  mtProvider='mm';return out;
+}
+function lemmaCandidates(word,sentence){
+  const w=word.toLowerCase().replace(/^'+|'+$/g,''), c=[];
+  try{if(window.nlp){const t=window.nlp(sentence||word).compute('root').json().flatMap(x=>x.terms).find(x=>x.normal===w);if(t&&t.root)c.push(t.root)}}catch(e){}
+  c.push(w);
+  if(w.endsWith("'s"))c.push(w.slice(0,-2));
+  if(/ie[sd]$/.test(w))c.push(w.slice(0,-3)+'y');
+  if(w.endsWith('es'))c.push(w.slice(0,-2));
+  if(w.endsWith('s')&&!w.endsWith('ss'))c.push(w.slice(0,-1));
+  if(w.endsWith('ed')){c.push(w.slice(0,-2),w.slice(0,-1));if(w.length>5&&w.at(-3)===w.at(-4))c.push(w.slice(0,-3))}
+  if(w.endsWith('ing')){c.push(w.slice(0,-3),w.slice(0,-3)+'e');if(w.length>6&&w.at(-4)===w.at(-5))c.push(w.slice(0,-4))}
+  if(/(er|ly)$/.test(w))c.push(w.slice(0,-2));
+  return [...new Set(c.filter(x=>x&&x.length>1))].slice(0,8);
+}
+async function lookupDict(word,sentence){
+  let entries=null, lemma=null, netErr=null;
+  for(const cand of lemmaCandidates(word,sentence)){
+    try{entries=await getJSON('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(cand));lemma=cand;break}
+    catch(e){if(e.status===404)continue;netErr=e;break}
+  }
+  lemma=lemma||lemmaCandidates(word,sentence)[0];
+  const res={word,lemma,phonetics:[],meanings:[],zh:null}, seen=new Set(), byPos=new Map();
+  for(const e of arr(entries)){
+    let phs=arr(e.phonetics); if(!phs.length&&e.phonetic)phs=[{text:e.phonetic}];
+    for(const p of phs){
+      const text=(p.text||'').trim(), audio=(p.audio||'').trim(); if(!text&&!audio)continue;
+      const acc=/-us\./.test(audio)?'us':/-uk\./.test(audio)?'uk':/-au\./.test(audio)?'au':'';
+      const key=text+'|'+(audio?acc:''); if(seen.has(key))continue; seen.add(key);
+      res.phonetics.push({text,audio,accent:acc});
+    }
+    for(const m of arr(e.meanings)){
+      const pos=m.partOfSpeech||''; if(!byPos.has(pos))byPos.set(pos,{pos,defs:[],syn:[],ant:[]});
+      const slot=byPos.get(pos);
+      for(const d of arr(m.definitions)){if(slot.defs.length<4)slot.defs.push({def:d.definition||'',ex:d.example||''});slot.syn.push(...arr(d.synonyms));slot.ant.push(...arr(d.antonyms))}
+      slot.syn.push(...arr(m.synonyms)); slot.ant.push(...arr(m.antonyms));
+    }
+  }
+  for(const slot of byPos.values()){slot.syn=[...new Set(slot.syn)].slice(0,8);slot.ant=[...new Set(slot.ant)].slice(0,6);res.meanings.push(slot)}
+  try{
+    const d=await gtx(lemma,['t','bd']);
+    res.zh={main:gtxText(d).trim(),byPos:arr(d[1]).filter(r=>Array.isArray(r)&&Array.isArray(r[1])).map(r=>({pos:r[0],terms:r[1].slice(0,6)}))};
+  }catch(e){try{res.zh={main:await myMemory(lemma),byPos:[]}}catch(e2){}}
+  if(!entries&&!res.zh)throw new Error(netErr?netErr.message:'查不到這個字。');
+  return res;
+}
+
+/* ---------- rule-based sentence chunking on top of compromise.js ---------- */
+/* rule-based sentence chunker on top of compromise chunk tags */
+function analyzeLocal(sentence){
+  const nlp=window.nlp; if(!nlp)throw new Error('句構分析元件沒有載入（需要網路）。');
+  const SUB=new Set(['because','when','if','although','though','while','since','before','after','unless','until','as','whereas','once']);
+  const COORD=new Set(['and','but','or','so','yet','then','nor']);
+  const REL=new Set(['that','which','who','whom','whose','where']);
+  const LINK=/^(am|is|are|was|were|be|been|being|seem|seems|seemed|become|becomes|became|look|looks|looked|feel|feels|felt|sound|sounds|sounded)$/i;
+  let toks=[];
+  for(const s of nlp(sentence).json())for(const t of s.terms){
+    const text=(t.text||'').trim();
+    const tags=new Set(t.tags||[]);
+    if(!text){if(toks.length)toks[toks.length-1].tags=new Set([...toks[toks.length-1].tags,...tags]);continue}
+    toks.push({text,low:t.normal||text.toLowerCase(),chunk:t.chunk||'',tags,post:t.post||''});
+  }
+  const chunks=[]; let i=0, mainV=false, objCount=0, linking=false; const pending=[];
+  const add=(arr,role,label)=>{if(pending.length&&role!=='V'){arr=[...pending.splice(0),...arr]}const text=arr.map(t=>t.text).join(' ').replace(/\s+([,.;:!?])/g,'$1').replace(/[,.;:!?]+$/,'');if(text)chunks.push({text,role,label})};
+  const stop=t=>/[,;:.!?]/.test(t.post);
+  const restUntilStop=(start)=>{let k=start;const out=[];while(k<toks.length){out.push(toks[k]);if(stop(toks[k])){k++;break}k++}return [out,k]};
+  while(i<toks.length){
+    const t=toks[i];
+    // coordinating conjunction after a main clause: rest is a coordinate part
+    if(t.chunk==='Pivot'&&COORD.has(t.low)&&mainV){add([t],'X','連接詞');const [r,k]=[toks.slice(i+1),toks.length];if(r.length)add(r,'X','對等成分');i=k;continue}
+    if(t.chunk==='Pivot'&&SUB.has(t.low)){const [r,k]=restUntilStop(i);add(r,'M',r.slice(1).some(x=>x.chunk==='Verb')?'副詞子句':'介系詞片語');i=k;continue}
+    if(t.tags.has('Preposition')&&!REL.has(t.low)){
+      const out=[t];let k=i+1,sawNoun=false;
+      while(k<toks.length&&!stop(toks[k-1])){
+        const u=toks[k];
+        if(u.chunk==='Pivot'&&(COORD.has(u.low)||SUB.has(u.low)))break;
+        if(u.tags.has('Preposition')&&!REL.has(u.low)&&sawNoun&&!mainV)break;
+        if(u.tags.has('Preposition')&&!REL.has(u.low)&&sawNoun&&mainV&&!out.some(x=>x.chunk==='Verb'))break;
+        if(u.chunk==='Noun')sawNoun=true;
+        out.push(u);k++;
+      }
+      add(out,'M','介系詞片語');i=k;continue;
+    }
+    // relative clause right after a noun phrase: attach to previous chunk
+    if(REL.has(t.low)&&chunks.length&&toks[i+1]&&toks[i+1].chunk==='Verb'){
+      const [r,k]=restUntilStop(i);const prev=chunks[chunks.length-1];prev.text+=' '+r.map(x=>x.text).join(' ').replace(/[,.;:!?]+$/,'');i=k;continue;
+    }
+    // group consecutive tokens of the same chunk type
+    let k=i;const grp=[];
+    while(k<toks.length&&toks[k].chunk===t.chunk&&!(toks[k].tags.has('Preposition')&&!REL.has(toks[k].low))&&!(toks[k].chunk==='Pivot'&&(COORD.has(toks[k].low)||SUB.has(toks[k].low)))){grp.push(toks[k]);if(stop(toks[k])){k++;break}k++}
+    if(!grp.length){grp.push(t);k=i+1}
+    i=k;
+    if(t.chunk==='Verb'){
+      const tail=[];while(grp.length>1&&grp[grp.length-1].tags.has('Adverb')&&!grp[grp.length-1].tags.has('Verb'))tail.unshift(grp.pop());
+      const auxOnly=grp.every(x=>x.tags.has('Modal')||x.tags.has('Auxiliary')||x.tags.has('Copula'));
+      const nx=toks[i];
+      if(!mainV&&auxOnly&&!chunks.some(c=>c.role==='S')&&nx&&nx.chunk==='Noun'&&toks.slice(i).some(x=>x.chunk==='Verb')){add(grp,'V','助動詞（倒裝）');pending.push(...tail);continue}
+      if(!mainV){mainV=true;linking=grp.filter(x=>!x.tags.has('Adverb')).every(x=>LINK.test(x.text));add(grp,'V','動詞')}
+      else if(chunks.length&&chunks[chunks.length-1].role==='S'&&chunks.some(c=>c.label==='助動詞（倒裝）')&&!chunks.some(c=>c.label==='動詞')){add(grp,'V','動詞')}
+      else add(grp,'X','其他動詞');
+      pending.push(...tail);
+      continue;
+    }
+    if(t.chunk==='Noun'){
+      // leading expression / time words
+      const lead=[];while(grp.length&&(grp[0].tags.has('Expression')||grp[0].tags.has('Date')&&grp.length>1&&!mainV)){lead.push(grp.shift())}
+      if(lead.length){for(const x of lead)add([x],'M',x.tags.has('Date')?'時間':'語氣詞')}
+      if(!grp.length)continue;
+      const trail=[];while(grp.length>1&&(grp[grp.length-1].tags.has('Date')||grp[grp.length-1].tags.has('Expression'))&&!grp[grp.length-2].tags.has('Determiner'))trail.unshift(grp.pop());
+      const timeRe=/^(every|each|this|next|last|all)\s+(day|week|month|year|morning|afternoon|evening|night|time|weekend)s?$/i;
+      if(grp.every(x=>x.tags.has('Date')||x.tags.has('Expression'))||timeRe.test(grp.map(x=>x.text).join(' '))){add(grp,'M','時間／副詞');if(trail.length)add(trail,'M','時間');continue}
+      if(!mainV&&chunks.some(c=>c.label==='助動詞（倒裝）')){add(grp,'S','主詞');if(trail.length)add(trail,'M','時間');continue}
+      if(!mainV){add(grp,'S','主詞');if(trail.length)add(trail,'M','時間');continue}
+      if(linking){add(grp,'C','主詞補語');if(trail.length)add(trail,'M','時間');continue}
+      // "gave me a book": pronoun object followed by another noun phrase
+      if(objCount===0&&grp.length>1&&grp[0].tags.has('Pronoun')&&!grp[1].tags.has('Possessive')){add([grp.shift()],'O','間接受詞');objCount++}
+      add(grp,'O','受詞');objCount++;if(trail.length)add(trail,'M','時間');continue;
+    }
+    if(t.chunk==='Adjective'){add(grp,mainV?'C':'M',mainV?'補語':'修飾語');continue}
+    add(grp,'M','修飾語');
+  }
+  const pattern=chunks.filter(c=>'SVOC'.includes(c.role)).map(c=>c.role).join(' + ');
+  return {chunks,pattern};
+}
+
+/* ---------- YouTube player ---------- */
+window.onYouTubeIframeAPIReady=function(){apiReady=true;if(pendingId)createPlayer(pendingId)};
+function createPlayer(id){
+  pendingId=null;
+  if(player&&playerReady){player.cueVideoById(id);return}
+  const vars={playsinline:1,rel:0,modestbranding:1,cc_load_policy:0};
+  if(location.protocol.startsWith('http'))vars.origin=location.origin;
+  player=new YT.Player('yt',{videoId:id,playerVars:vars,events:{
+    onReady(){playerReady=true;applySpeed();readTitle()},onStateChange:onState,onError:onErr}});
+}
+function readTitle(){
+  try{const d=player.getVideoData();if(d&&d.title&&d.video_id===vid){
+    if(meta.title!==d.title||meta.author!==d.author){meta.title=d.title;meta.author=d.author||'';save()}
+    $('#vtitle').textContent=d.title+(d.author?' · '+d.author:'')}}catch(e){}
+}
+function onState(e){
+  readTitle();
+  if(e.data===YT.PlayerState.PLAYING&&mode==='idle')mode='free';
+  if(e.data===YT.PlayerState.PAUSED&&mode==='free')mode='idle';
+  if(e.data===YT.PlayerState.ENDED)mode='idle';
+  renderPlayIcon();
+}
+function onErr(e){
+  const msg={2:'影片 ID 無效。',5:'瀏覽器無法播放這支影片。',100:'找不到影片（可能已刪除或設為私人）。',101:'影片擁有者禁止嵌入播放，請換一支影片。',150:'影片擁有者禁止嵌入播放，請換一支影片。',153:'YouTube 拒絕播放：請用本機伺服器網址開啟本頁，不要直接開檔案。'}[e.data]||('播放錯誤（代碼 '+e.data+'）');
+  showErr(msg);
+}
+function applySpeed(){if(playerReady)try{player.setPlaybackRate(cfg.speed)}catch(e){}}
+function now(){try{return player.getCurrentTime()||0}catch(e){return 0}}
+
+/* ---------- loading ---------- */
+function loadData(id){const d=store.get('sl:v:'+id,null);if(Array.isArray(d))return {segs:d,meta:{}};return d&&d.segs?d:{segs:[],meta:{}}}
+function loadVideo(id,thenTime){
+  stopAll(); showErr(''); closeSheet(); closeHelper();
+  vid=id; recs.clear(); const d=loadData(id); segs=d.segs; meta=d.meta||{};
+  cur=segs.length?0:-1; repsDone=0; markStart=null;
+  if(thenTime!=null){const i=findSeg(thenTime);if(i>=0)cur=i}
+  $('#welcome').hidden=true; $('#work').hidden=false; $('#vtitle').textContent=meta.title||'載入中…';
+  $('#anacard').hidden=true; $('#acccard').hidden=true; $('#impstatus').textContent='';
+  if(apiReady)createPlayer(id); else pendingId=id;
+  renderAll();
+  if(!segs.length){
+    $('#imp').open=true;
+  }else if(cfg.zh)translateMissing();
+}
+function saveRecent(){
+  if(!vid)return;
+  const r=store.get('sl:recent',[]).filter(x=>x.id!==vid);
+  r.unshift({id:vid,title:meta.title||vid,n:segs.length,acc:meta.accent&&meta.accent.label_zh||''});
+  store.set('sl:recent',r.slice(0,10));
+}
+function renderRecent(){
+  const r=store.get('sl:recent',[]); const box=$('#recent'); box.textContent='';
+  $('#recentwrap').hidden=!r.length;
+  for(const x of r)box.appendChild(h('button',{class:'btn small',onclick:()=>{$('#url').value='https://youtu.be/'+x.id;loadVideo(x.id)}},x.title+(x.n?'（'+x.n+' 句）':'')+(x.acc?' · '+x.acc:'')));
+}
+function applySegs(list,note){
+  stopAll(); recs.clear();
+  segs=list.filter(g=>g.t).map(g=>({s:+(+g.s).toFixed(2),e:+Math.max(+g.e,+g.s+0.4).toFixed(2),t:g.t,star:false,done:0}));
+  cur=segs.length?0:-1; repsDone=0;
+  save(); renderAll();
+  if(note)$('#impstatus').textContent=note;
+  if(cfg.zh)translateMissing();
+}
+function importText(text,label){
+  let list=parseTimed(text||'');
+  if(!list.length)return false;
+  const punct=hasPunctuation(list);
+  if(cfg.merge)list=punct?mergeSentences(list):mergeByPause(list);
+  applySegs(list,(label||'已匯入字幕')+'，共 '+list.length+' 句。'+(punct?'':'這份字幕沒有標點，先依停頓切句；想要完整句子，按「用 Claude 補標點斷句」。'));
+  $('#imp').open=!punct;
+  return true;
+}
+/* transcript sent by the bookmarklet running on a YouTube page */
+let lastMsg='';
+window.addEventListener('message',e=>{
+  const d=e.data; if(!d||d.type!=='shadowloop-transcript')return;
+  try{e.source&&e.source.postMessage('shadowloop-got','*')}catch(x){}
+  if(!/^[\w-]{11}$/.test(d.v||'')||typeof d.text!=='string'||d.text.length>3e6)return;
+  const key=d.v+':'+d.text.length; if(key===lastMsg)return; lastMsg=key;
+  showView('practice'); $('#url').value='https://youtu.be/'+d.v;
+  if(vid!==d.v)loadVideo(d.v);
+  if(d.title&&!meta.title){meta.title=String(d.title).slice(0,200);$('#vtitle').textContent=meta.title}
+  if(segs.length){
+    $('#imp').open=true; $('#imptext').value=d.text;
+    $('#impstatus').textContent='收到新的字幕，但這支影片已經有句子了。要取代的話按「套用字幕」（練習紀錄會重設）。';
+  }else if(!importText(d.text,'已從 YouTube 收到字幕'))$('#impstatus').textContent='收到的內容裡找不到時間戳記。請確認轉錄稿有顯示時間。';
+});
+function bookmarkletCode(){
+  const tool=location.href.split('#')[0];
+  return `(async()=>{const TOOL=${JSON.stringify(tool)};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const v=new URLSearchParams(location.search).get('v')||(location.pathname.match(/\\/(?:shorts|live)\\/([\\w-]{11})/)||[])[1];
+if(!/youtube\\.com$/.test(location.hostname)||!v){alert('請在 YouTube 影片頁面按這個書籤。');return}
+const TS=/(^|\\n)\\s*(\\d{1,2}:)?\\d{1,2}:\\d{2}\\s*(\\n|$)/;
+const read=()=>{const segs=[...document.querySelectorAll('ytd-transcript-segment-renderer')];
+if(segs.length)return segs.map(s=>{const t=s.querySelector('.segment-timestamp'),x=s.querySelector('.segment-text');return (t?t.textContent.trim():'')+'\\n'+(x?x.textContent.trim():'')}).join('\\n');
+const p=[...document.querySelectorAll('ytd-engagement-panel-section-list-renderer')].find(p=>/transcript/i.test(p.getAttribute('target-id')||'')&&p.offsetParent);
+return p?p.innerText:''};
+let text=read();
+if(!TS.test(text)){
+const ex=document.querySelector('#description-inline-expander #expand, #description #expand');if(ex)ex.click();await sleep(600);
+const btn=[...document.querySelectorAll('button')].find(b=>/transcript|轉錄稿|字幕記錄|文字記錄|显示转录稿/i.test((b.getAttribute('aria-label')||'')+' '+b.textContent));
+if(btn)btn.click();
+for(let k=0;k<25&&!TS.test(text);k++){await sleep(300);text=read()}}
+if(!TS.test(text)){alert('找不到轉錄稿。請先在影片說明欄按「顯示轉錄稿」，再按一次這個書籤。');return}
+const payload={type:'shadowloop-transcript',v,title:document.title.replace(/ - YouTube$/,''),text};
+try{await navigator.clipboard.writeText(text)}catch(e){}
+const w=window.open(TOOL+'#practice','shadowloop');
+if(!w){alert('字幕已複製。請切到 Shadow Loop，按 Ctrl+V 貼上。');return}
+let n=0;const iv=setInterval(()=>{try{w.postMessage(payload,'*')}catch(e){}if(++n>60)clearInterval(iv)},250);
+window.addEventListener('message',e=>{if(e.data==='shadowloop-got')clearInterval(iv)});})();`;
+}
+/* ---------- translation (free) ---------- */
+async function translateMissing(){
+  if(busy.zh||!segs.length)return;
+  busy.zh=true; const ref=segs; renderZh();
+  const todo=segs.map((g,i)=>i).filter(i=>!segs[i].zh);
+  let done=0;
+  try{
+    while(done<todo.length){
+      if(segs!==ref)break;
+      const batch=[]; let size=0;
+      while(done+batch.length<todo.length&&batch.length<40){const t=ref[todo[done+batch.length]].t;if(batch.length&&size+t.length>1500)break;batch.push(todo[done+batch.length]);size+=t.length+1}
+      toast('翻譯中 '+done+' / '+todo.length,0);
+      const zh=await translateBatch(batch.map(i=>ref[i].t));
+      batch.forEach((i,n)=>{if(zh[n]){ref[i].zh=zh[n];ref[i].zhSrc='mt'}});
+      done+=batch.length;
+      if(segs===ref){save();renderList();markList();renderZh()}
+    }
+    if(todo.length)toast('翻譯完成');
+  }catch(e){toast('免費翻譯失敗（'+e.message+'）。可以改用「Claude 助手 → 翻譯」。',7000)}
+  finally{busy.zh=false;renderZh()}
+}
+
+/* ---------- practice engine ---------- */
+function clearGap(){clearTimeout(gapTimer);gapTimer=null;$('#gapbox').hidden=true}
+function stopAll(){clearGap();onceCb=null;if(mode!=='idle'){mode='idle';try{player&&player.pauseVideo()}catch(e){}}renderPlayIcon()}
+function select(i){
+  if(i<0||i>=segs.length)return;
+  if(i!==cur){cur=i;repsDone=0;renderCurrent();markList(true)}
+}
+function playSeg(i,reset=true){
+  if(!playerReady||!segs[i])return;
+  clearGap(); onceCb=null;
+  if(i!==cur)select(i); else if(reset)repsDone=0;
+  renderDots();
+  mode='loop'; segStartedAt=performance.now();
+  player.seekTo(segs[i].s,true); player.playVideo(); renderPlayIcon();
+}
+function playOnce(i,cb){
+  if(!playerReady||!segs[i])return;
+  clearGap(); select(i);
+  mode='once'; onceCb=cb; segStartedAt=performance.now();
+  player.seekTo(segs[i].s,true); player.playVideo(); renderPlayIcon();
+}
+function startGap(ms,fn){
+  if(ms<=0){fn();return}
+  mode='gap'; gapDur=ms; gapEndAt=performance.now()+ms;
+  $('#gapbox').hidden=false; updateGap();
+  gapTimer=setTimeout(()=>{$('#gapbox').hidden=true;gapTimer=null;fn()},ms);
+  renderPlayIcon();
+}
+function updateGap(){
+  const left=Math.max(0,gapEndAt-performance.now());
+  $('#gapbar').style.width=(100*(1-left/gapDur)).toFixed(1)+'%';
+  $('#gaplabel').textContent='換你說 · '+(left/1000).toFixed(1)+'s';
+}
+function endOfSeg(){
+  try{player.pauseVideo()}catch(e){}
+  if(mode==='once'){mode='idle';const cb=onceCb;onceCb=null;renderPlayIcon();cb&&cb();return}
+  const g=segs[cur]; repsDone++; renderDots();
+  const gapMs=cfg.gap>0?((g.e-g.s)/cfg.speed*cfg.gap*1000+300):0;
+  if(cfg.reps===0||repsDone<cfg.reps){startGap(gapMs,()=>playSeg(cur,false));return}
+  g.done=(g.done||0)+1; save(); renderList(); markList(); renderProgress();
+  if(cfg.auto&&cur<segs.length-1)startGap(gapMs,()=>playSeg(cur+1,true));
+  else startGap(gapMs,()=>{mode='idle';renderPlayIcon()});
+}
+function findSeg(t){for(let i=0;i<segs.length;i++)if(t>=segs[i].s&&t<segs[i].e)return i;return -1}
+setInterval(()=>{
+  if(mode==='gap'){updateGap();return}
+  if(!playerReady)return;
+  const t=now();
+  if(mode==='loop'||mode==='once'){
+    const g=segs[cur]; if(!g)return;
+    if(performance.now()-segStartedAt<300||t<g.s-0.6)return;
+    if(t>=g.e-0.04)endOfSeg();
+  }else if(mode==='free'){
+    const i=findSeg(t); if(i>=0&&i!==cur){cur=i;repsDone=0;renderCurrent();markList(true)}
+  }
+},40);
+function togglePlay(){
+  if(mode!=='idle'){stopAll();return}
+  if(segs.length)playSeg(Math.max(cur,0));
+  else if(playerReady){mode='free';player.playVideo();renderPlayIcon()}
+}
+function go(d){if(!segs.length)return;playSeg(Math.min(segs.length-1,Math.max(0,(cur<0?0:cur)+d)))}
+
+/* ---------- recording ---------- */
+async function toggleRec(){
+  if(mediaRec&&mediaRec.state==='recording'){mediaRec.stop();return}
+  if(cur<0)return;
+  if(!navigator.mediaDevices||!window.MediaRecorder){toast('這個瀏覽器不支援錄音。');return}
+  try{micStream=micStream||await navigator.mediaDevices.getUserMedia({audio:true})}
+  catch(e){toast('無法使用麥克風：請允許麥克風權限，並用 https 或 localhost 開啟本頁。',6000);return}
+  const chunks=[]; recIdx=cur;
+  mediaRec=new MediaRecorder(micStream);
+  mediaRec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  mediaRec.onstop=()=>{
+    const blob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'});
+    if(recs.has(recIdx))URL.revokeObjectURL(recs.get(recIdx));
+    recs.set(recIdx,URL.createObjectURL(blob)); renderRec();
+  };
+  mediaRec.start(); renderRec();
+  if(cfg.recSync)playOnce(cur,()=>setTimeout(()=>{if(mediaRec&&mediaRec.state==='recording')mediaRec.stop()},700));
+  else stopAll();
+}
+function playMine(){const u=recs.get(cur);if(!u)return;const a=$('#myaudio');stopAll();a.src=u;a.play().catch(()=>{})}
+function compare(){if(!recs.get(cur))return;playOnce(cur,()=>setTimeout(playMine,250))}
+
+/* ---------- editing ---------- */
+function adjust(field,val){
+  const g=segs[cur]; if(!g)return;
+  if(val==='now')g[field]=+now().toFixed(2); else g[field]=Math.max(0,+(g[field]+val).toFixed(2));
+  if(g.e<g.s+0.2){if(field==='s')g.s=+(g.e-0.2).toFixed(2); else g.e=+(g.s+0.2).toFixed(2)}
+  save(); renderCurrent(); renderList(); markList();
+}
+function structural(){recs.clear();save();renderAll()}
+function mark(){
+  if(!playerReady)return;
+  const t=+now().toFixed(2);
+  if(markStart===null){markStart=t;$('#bmark').textContent='標記終點';$('#marknote').textContent='起點 '+fmt(t)+'，播到句尾再按一次。';return}
+  const s=Math.min(markStart,t), e=Math.max(markStart,t); markStart=null;
+  $('#bmark').textContent='標記起點';
+  if(e-s<0.3){$('#marknote').textContent='太短了，請重新標記。';return}
+  const g={s,e,t:'（未輸入文字，可在「調整這一句」輸入）',star:false,done:0};
+  segs.push(g); segs.sort((a,b)=>a.s-b.s); cur=segs.indexOf(g); repsDone=0;
+  $('#marknote').textContent='已新增 '+fmt(s)+' – '+fmt(e);
+  structural(); $('#tune').open=true;
+}
+
+/* ---------- rendering: practice ---------- */
+const PLAY='<path d="M7 4v16l13-8z"/>', STOP='<path d="M6 6h12v12H6z"/>';
+function renderPlayIcon(){const on=mode!=='idle';$('#playicon').innerHTML=on?STOP:PLAY;$('#bplay').setAttribute('aria-label',on?'停止':'開始循環')}
+function renderDots(){
+  const d=$('#dots'); d.textContent='';
+  if(cur<0)return;
+  if(cfg.reps===0){d.textContent='∞ 第 '+(repsDone+1)+' 遍';return}
+  for(let i=0;i<cfg.reps;i++)d.appendChild(h('i',{class:i<repsDone?'on':null}));
+}
+function knownSet(){const s=new Set();for(const v of vocab){s.add(v.w.toLowerCase());const l=v.info&&v.info.lemma||v.ai&&v.ai.lemma;if(l)s.add(String(l).toLowerCase())}return s}
+const wordOf=tok=>tok.replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g,'').replace(/^'+|'+$/g,'');
+function renderNow(g){
+  const n=$('#nowline'); n.textContent=''; n.classList.remove('peek'); n.classList.toggle('blind',cfg.blind&&!!g);
+  if(!g){n.textContent=segs.length?'選一個句子開始練習。':'等待字幕：自動抓取、手動匯入，或在播放時用「標記」切出句子。';return}
+  const known=knownSet();
+  for(const part of g.t.split(/(\s+)/)){
+    const w=wordOf(part);
+    if(w&&/[A-Za-z]/.test(w))n.appendChild(h('span',{class:'wd'+(known.has(w.toLowerCase())?' known':''),'data-w':w},part));
+    else n.appendChild(document.createTextNode(part));
+  }
+}
+function renderZh(){
+  const g=segs[cur], z=$('#nowzh');
+  $('#bzh').textContent='中文翻譯：'+(cfg.zh?'開':'關'); $('#bzh').classList.toggle('on',cfg.zh);
+  z.hidden=!(cfg.zh&&g); if(!g)return;
+  z.textContent=g.zh||(busy.zh?'翻譯中…':'（尚未翻譯）');
+}
+function renderCurrent(){
+  const g=segs[cur];
+  $('#prevline').textContent=cur>0?segs[cur-1].t:'';
+  $('#nextline').textContent=cur>=0&&cur<segs.length-1?segs[cur+1].t:'';
+  renderNow(g); renderZh();
+  $('#segpos').textContent=g?('第 '+(cur+1)+' / '+segs.length+' 句　'+fmt(g.s)+' – '+fmt(g.e)):'—';
+  $('#ts_s').textContent=g?fmt(g.s):'—'; $('#ts_e').textContent=g?fmt(g.e):'—';
+  if(document.activeElement!==$('#edittext'))$('#edittext').value=g?g.t:'';
+  $('#delconfirm').textContent=''; delArmed=false;
+  renderDots(); renderRec();
+  if(!$('#anacard').hidden)analyze();
+}
+function renderRec(){
+  const recording=mediaRec&&mediaRec.state==='recording';
+  $('#brec').classList.toggle('on',!!recording);
+  $('#brec').setAttribute('aria-label',recording?'停止錄音':'錄音');
+  $('#recrow').hidden=!recs.has(cur);
+}
+function visible(g){return filter==='all'||(filter==='star'&&g.star)||(filter==='todo'&&!g.done)}
+function renderList(){
+  const ul=$('#list'); ul.textContent='';
+  const frag=document.createDocumentFragment(); let shown=0;
+  segs.forEach((g,i)=>{
+    if(!visible(g))return; shown++;
+    frag.appendChild(h('li',{'data-i':i,class:i===cur?'cur':null},
+      h('span',{class:'ts'},fmt(g.s)),
+      h('span',{class:'tx'},g.t),
+      h('span',{class:'tools'},g.done?h('span',{class:'done'},'✓'+g.done):null,
+        h('button',{class:'star'+(g.star?' on':''),'data-star':i,'aria-label':g.star?'取消星號':'加星號'},'★')),
+      cfg.zh&&g.zh?h('span',{class:'lz'},g.zh):null));
+  });
+  ul.appendChild(frag);
+  $('#listempty').hidden=shown>0;
+  $('#listempty').textContent=segs.length?'這個篩選條件下沒有句子。':'還沒有句子。'+(vid?'用「字幕來源」抓取或匯入字幕。':'先載入影片。');
+}
+function markList(scroll){
+  const ul=$('#list');
+  ul.querySelectorAll('li.cur').forEach(l=>l.classList.remove('cur'));
+  const li=ul.querySelector('li[data-i="'+cur+'"]'); if(!li)return;
+  li.classList.add('cur');
+  if(scroll){const top=li.offsetTop,bot=top+li.offsetHeight;if(top<ul.scrollTop||bot>ul.scrollTop+ul.clientHeight)ul.scrollTop=top-ul.clientHeight/3}
+}
+function renderProgress(){
+  const n=segs.length, d=segs.filter(g=>g.done).length;
+  $('#progtext').textContent=d+' / '+n+' 已練';
+  $('#progbar').style.width=(n?100*d/n:0)+'%';
+}
+function renderSettings(){
+  const mk=(box,opts,key)=>{
+    const el=$(box); el.textContent='';
+    for(const [v,l] of opts)el.appendChild(h('button',{class:cfg[key]===v?'on':null,onclick:()=>{cfg[key]=v;saveCfg();renderSettings();if(key==='speed')applySpeed();if(key==='reps')renderDots()}},l));
+  };
+  mk('#sspeed',[[0.5,'0.5×'],[0.75,'0.75×'],[1,'1×'],[1.25,'1.25×']],'speed');
+  mk('#sreps',[[1,'1 遍'],[2,'2'],[3,'3'],[5,'5'],[0,'∞']],'reps');
+  mk('#sgap',[[0,'不停'],[0.5,'0.5×句長'],[1,'1×'],[1.5,'1.5×']],'gap');
+  $('#cauto').checked=cfg.auto; $('#cblind').checked=cfg.blind; $('#crecsync').checked=cfg.recSync; $('#cmerge').checked=cfg.merge;
+}
+function renderAll(){renderSettings();renderCurrent();renderList();markList(true);renderProgress();renderPlayIcon();renderAccentChip()}
+
+/* ---------- sentence structure ---------- */
+function roleClass(r){r=String(r||'').toUpperCase();return r.startsWith('S')?'s':r.startsWith('V')?'v':(r.startsWith('O')||r==='DO'||r==='IO')?'o':r.startsWith('C')&&!r.startsWith('CONJ')?'c':(r.startsWith('M')||r.startsWith('A'))?'m':'x'}
+function chunkRow(chunks){return h('div',{class:'chunks'},arr(chunks).map(c=>h('div',{class:'chunk '+roleClass(c.role)},h('span',null,c.text),h('small',null,c.label||c.role))))}
+let anaLoading=null;
+async function analyze(){
+  const g=segs[cur]; $('#anacard').hidden=false;
+  if(!g||g.an||g.basic||anaLoading===g){renderAnalysis();return}
+  anaLoading=g; renderAnalysis();
+  try{g.basic=analyzeLocal(g.t);save()}
+  catch(e){g.basicErr=e.message}
+  finally{anaLoading=null}
+  if(segs[cur]===g)renderAnalysis();
+}
+function renderAnalysis(){
+  const box=$('#anacard'), g=segs[cur]; box.textContent='';
+  box.appendChild(h('div',{class:'card-h'},h('h3',null,'句構'),
+    h('div',{class:'recrow'},g?h('button',{class:'btn small claude',onclick:()=>openHelper('an')},g.an?'請 Claude 重新分析':'請 Claude 深入分析'):null,
+      h('button',{class:'btn small',onclick:()=>{box.hidden=true}},'收起'))));
+  if(!g){box.appendChild(h('p',{class:'note'},'先選一個句子。'));return}
+  if(g.an){renderClaudeAnalysis(box,g.an);return}
+  if(anaLoading===g){box.appendChild(h('div',{class:'loading'},'分析中…'));return}
+  if(g.basic){
+    box.appendChild(h('div',{class:'hwrow'},g.basic.pattern?h('span',{class:'pattern'},g.basic.pattern):null,h('span',{class:'src'},'自動分析')));
+    box.appendChild(chunkRow(g.basic.chunks));
+    if(g.zh)box.appendChild(h('p',{class:'zh'},g.zh));
+    box.appendChild(h('p',{class:'note',style:'margin:0'},'自動分析只標出主要成分。文法說明、實用片語、連音弱讀與相同句型的例句，請按「請 Claude 深入分析」。'));
+    return;
+  }
+  if(g.basicErr)box.appendChild(h('p',{class:'err'},'自動分析失敗：'+g.basicErr));
+}
+function renderClaudeAnalysis(box,a){
+  box.appendChild(h('div',{class:'hwrow'},a.pattern?h('span',{class:'pattern'},a.pattern):null,h('span',{class:'src cl'},'Claude 分析')));
+  if(arr(a.chunks).length)box.appendChild(chunkRow(a.chunks));
+  if(a.zh)box.appendChild(h('p',{class:'zh'},a.zh));
+  if(arr(a.grammar).length)box.appendChild(h('div',{class:'sec'},h('h4',null,'文法重點'),h('ul',null,arr(a.grammar).map(x=>h('li',null,h('b',null,x.point),'：',x.explain)))));
+  if(arr(a.phrases).length)box.appendChild(h('div',{class:'sec'},h('h4',null,'實用片語'),h('div',{class:'tags'},arr(a.phrases).map(p=>h('span',{class:'tag'},p.en,h('i',null,p.zh))))));
+  const sp=a.speech||{};
+  const items=[...arr(sp.linking).map(x=>['連音',x]),...arr(sp.reduction).map(x=>['弱讀',x]),sp.stress?['重音',sp.stress]:null,sp.intonation?['語調',sp.intonation]:null].filter(Boolean);
+  if(items.length)box.appendChild(h('div',{class:'sec'},h('h4',null,'跟讀發音重點'),h('ul',null,items.map(([k,v])=>h('li',null,h('b',null,k),'：',v)))));
+  if(arr(a.examples).length)box.appendChild(h('div',{class:'sec'},h('h4',null,'相同句型的例句'),arr(a.examples).map(x=>h('div',{class:'ex'},h('span',{class:'en'},x.en,' ',spk(x.en,'en-US')),h('span',{class:'cn'},x.zh)))));
+  if(a.tip)box.appendChild(h('div',{class:'sec'},h('h4',null,'練習提示'),h('p',null,a.tip)));
+}
+
+/* ---------- accent ---------- */
+const ACC_OPTS=[['US','美式'],['UK','英式'],['AU','澳式'],['CA','加拿大'],['IN','印度'],['IE','愛爾蘭'],['NZ','紐西蘭'],['Other','其他'],['Unknown','無法判斷']];
+function renderAccentChip(){const a=meta.accent;$('#acclabel').textContent=a?(a.label_zh+(a.confidence&&!a.manual?' '+(a.confidence|0)+'%':'')):'未標記'}
+function renderAccent(){
+  const box=$('#acccard'); box.textContent=''; box.hidden=false;
+  box.appendChild(h('div',{class:'card-h'},h('h3',null,'口音'),
+    h('div',{class:'recrow'},h('button',{class:'btn small claude',onclick:()=>openHelper('acc')},'請 Claude 判斷'),
+      h('button',{class:'btn small',onclick:()=>{box.hidden=true}},'收起'))));
+  const a=meta.accent;
+  if(a){
+    box.appendChild(h('div',{class:'hwrow'},h('b',{class:'hw',style:'font-size:1.3rem'},a.label_zh||a.code),
+      a.manual?h('span',{class:'src'},'手動標記'):h('span',{class:'src cl'},'Claude 判斷'+(a.confidence?' · 信心 '+(a.confidence|0)+'%':''))));
+    if(arr(a.evidence).length)box.appendChild(h('div',{class:'sec'},h('h4',null,'判斷依據'),h('ul',null,arr(a.evidence).map(x=>h('li',null,x)))));
+    if(a.caveat)box.appendChild(h('p',{class:'note',style:'margin:0'},a.caveat));
+    if(arr(a.listening_tips).length)box.appendChild(h('div',{class:'sec'},h('h4',null,'跟讀時注意這些口音特徵'),h('ul',null,arr(a.listening_tips).map(x=>h('li',null,x)))));
+    if(a.toeic_note)box.appendChild(h('div',{class:'sec'},h('h4',null,'與 TOEIC 的關係'),h('p',null,a.toeic_note)));
+  }else box.appendChild(h('p',{class:'note',style:'margin:0'},'聽完後可以自己標記口音，或請 Claude 依頻道、標題與字幕推測。Claude 也聽不到影片聲音，所以結果是推測。'));
+  const sel=h('select',{id:'accsel','aria-label':'手動標記口音'},h('option',{value:''},'手動標記口音…'),ACC_OPTS.map(([c,l])=>h('option',{value:c},l)));
+  sel.onchange=()=>{if(!sel.value)return;const l=ACC_OPTS.find(x=>x[0]===sel.value)[1];
+    meta.accent={code:sel.value,label_zh:l,manual:true,listening_tips:meta.accent&&meta.accent.code===sel.value?meta.accent.listening_tips:[]};save();renderAccentChip();renderAccent()};
+  box.appendChild(h('div',{class:'recrow'},sel));
+}
+
+/* ---------- word lookup (free dictionary) ---------- */
+function findVocab(word){const w=word.toLowerCase();return vocab.find(v=>v.w.toLowerCase()===w||(v.info&&String(v.info.lemma||'').toLowerCase()===w)||(v.ai&&String(v.ai.lemma||'').toLowerCase()===w))}
+let sheetWord=null;
+async function openWord(word){
+  const g=segs[cur]; if(!g)return;
+  stopAll(); closeHelper();
+  const sw=sheetWord={word,sent:g.t,sentZh:g.zh||'',time:g.s,vid,info:null,err:null,loading:true};
+  $('#scrim').hidden=false; $('#sheet').hidden=false; renderSheet();
+  const ex=findVocab(word);
+  if(ex&&ex.info)sw.info=ex.info;
+  else if(dictCache.has(word.toLowerCase()))sw.info=dictCache.get(word.toLowerCase());
+  else{try{sw.info=await lookupDict(word,g.t);dictCache.set(word.toLowerCase(),sw.info)}catch(e){sw.err=e.message+' 可以按「請 Claude 解說這個字」或開劍橋詞典。'}}
+  sw.loading=false; if(sheetWord===sw)renderSheet();
+}
+function closeSheet(){$('#sheet').hidden=true;sheetWord=null;if($('#helper').hidden)$('#scrim').hidden=true}
+function phonRow(info,word){
+  const ps=arr(info&&info.phonetics); const row=h('div',{class:'ipa'});
+  const lab={us:'美',uk:'英',au:'澳'};
+  if(!ps.length)row.append(h('span',null,'美',spk(word,'en-US','美式朗讀')),h('span',null,'英',spk(word,'en-GB','英式朗讀')));
+  for(const p of ps.slice(0,4))row.appendChild(h('span',null,(lab[p.accent]?lab[p.accent]+' ':'')+(p.text||''),spk(info.lemma||word,p.accent==='uk'?'en-GB':'en-US',lab[p.accent]?lab[p.accent]+'式發音':'發音',p.audio)));
+  return row;
+}
+function zhBlock(info){
+  const z=info&&info.zh; if(!z)return null;
+  return h('div',{class:'zhpos'},z.main?h('p',{class:'zhbig'},z.main):null,
+    arr(z.byPos).slice(0,4).map(r=>h('div',null,h('b',null,posZh(r.pos)),arr(r.terms).join('、'))));
+}
+function defsBlock(info,maxPos=3,maxDef=2){
+  const ms=arr(info&&info.meanings).slice(0,maxPos); if(!ms.length)return null;
+  return h('div',{class:'stage',style:'gap:10px'},ms.map(m=>h('div',{class:'sec'},
+    h('h4',null,m.pos+' · '+posZh(m.pos)),
+    h('ol',{class:'defs'},arr(m.defs).slice(0,maxDef).map(d=>h('li',null,d.def,d.ex?h('span',{class:'exx'},d.ex):null))))));
+}
+function synAnt(info){
+  const syn=[...new Set(arr(info&&info.meanings).flatMap(m=>arr(m.syn)))].slice(0,8);
+  const ant=[...new Set(arr(info&&info.meanings).flatMap(m=>arr(m.ant)))].slice(0,6);
+  return [syn.length?h('div',{class:'sec'},h('h4',null,'同義詞'),h('div',{class:'tags'},syn.map(s=>h('span',{class:'tag'},s)))):null,
+          ant.length?h('div',{class:'sec'},h('h4',null,'反義詞'),h('div',{class:'tags'},ant.map(s=>h('span',{class:'tag'},s)))):null];
+}
+function cambridge(word){return h('a',{href:'https://dictionary.cambridge.org/dictionary/english-chinese-traditional/'+encodeURIComponent(word.toLowerCase()),target:'_blank',rel:'noopener',class:'btn small'},'劍橋詞典 ↗')}
+function renderSheet(){
+  const s=$('#sheet'), sw=sheetWord; s.textContent=''; if(!sw)return;
+  const i=sw.info||{}, head=i.lemma||sw.word;
+  s.appendChild(h('div',{class:'card-h'},h('div',{class:'hwrow'},h('span',{class:'hw'},head),head.toLowerCase()!==sw.word.toLowerCase()?h('span',{class:'note'},'（原文：'+sw.word+'）'):null),
+    h('button',{class:'btn small',onclick:closeSheet},'關閉')));
+  s.appendChild(phonRow(sw.info,head));
+  if(sw.loading)s.appendChild(h('div',{class:'loading'},'查詢中…'));
+  else if(sw.err)s.appendChild(h('p',{class:'err'},sw.err));
+  else{s.appendChild(zhBlock(i)||h('span'));const d=defsBlock(i,2,2);if(d)s.appendChild(d);s.append(...synAnt(i).filter(Boolean))}
+  s.appendChild(h('div',{class:'sec'},h('h4',null,'在影片中'),h('p',{style:'font-family:var(--f-read)'},highlight(sw.sent,sw.word)),sw.sentZh?h('p',{class:'note'},sw.sentZh):null));
+  const ex=findVocab(sw.word);
+  s.appendChild(h('div',{class:'recrow'},
+    ex?h('button',{class:'btn small',onclick:()=>{closeSheet();showVocab(ex.id)}},'已在生字本，查看')
+      :h('button',{class:'btn small primary',onclick:()=>{addVocab(sw);renderSheet()}},'加入生字本'),
+    h('button',{class:'btn small claude',onclick:()=>{const e=findVocab(sw.word)||addVocab(sw);closeSheet();openHelper('word',{only:e.id})}},'請 Claude 解說這個字'),
+    cambridge(head)));
+}
+function highlight(text,word){
+  const re=new RegExp('\\b('+word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')\\b','i');
+  const m=text.match(re); if(!m)return [text];
+  return [text.slice(0,m.index),h('mark',null,m[0]),text.slice(m.index+m[0].length)];
+}
+function addVocab(sw){
+  const ex=findVocab(sw.word); if(ex)return ex;
+  const v={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),w:sw.word,sent:sw.sent,sentZh:sw.sentZh||'',vid:sw.vid,t:sw.time,
+    title:meta.title||'',at:Date.now(),box:0,due:Date.now(),info:sw.info||null,ai:null};
+  vocab.unshift(v); saveVocab(); renderNow(segs[cur]); toast('已加入生字本：'+sw.word); return v;
+}
+
+/* ---------- Claude helper (uses the person's own Claude chat) ---------- */
+const TASKS=[['punct','補標點斷句'],['zh','翻譯'],['an','句構分析'],['word','單字解說'],['acc','口音判斷']];
+let helper={task:'an',opts:{},prompt:'',ctx:null};
+const P_HEAD='（這是我的英文跟讀練習工具 Shadow Loop 產生的請求。請照格式回覆，我會把你的回覆貼回工具裡。）\n\n';
+function buildTask(task,opts){
+  const title=meta.title||'', ch=meta.author||'';
+  if(task==='punct'){
+    if(!segs.length)return {err:'目前沒有字幕。'};
+    const words=toWords(segs.map(g=>({s:g.s,e:g.e,t:g.t.replace(/[.?!,;:]/g,'')})));
+    return {desc:'把整支影片的字幕（'+words.length+' 個字）交給 Claude 加上標點，並斷成適合跟讀的句子。'+(words.length>4500?'內容很長，Claude 可能分段回覆；匯入時只會替換 Claude 處理到的部分，後面保留原本的切句。':''),
+      ctx:{words},
+      prompt:P_HEAD+`請幫我把下面這段 YouTube 字幕（語音辨識結果，沒有標點）加上標點並斷句，用於英文跟讀練習。
+規則：
+1. 保留完全相同的英文單字與順序，只加標點、修正大小寫。不要增加、刪除、改寫任何字（口頭禪、重複的字也保留）。
+2. 斷成適合跟讀的句子：每句 5–20 個字為佳；太長的口語句子在自然的子句處切開。
+3. 每句一行，全部放在同一個 code block 裡。不要編號，不要其他說明。
+
+影片：${title}
+---
+${words.map(w=>w.w).join(' ')}`};
+  }
+  if(task==='zh'){
+    if(!segs.length)return {err:'目前沒有字幕。'};
+    let idx=segs.map((g,i)=>i).filter(i=>opts.all||!segs[i].zh||segs[i].zhSrc!=='claude');
+    const total=idx.length; idx=idx.slice(0,80);
+    if(!idx.length)return {err:'所有句子都已經有 Claude 翻譯了。'};
+    return {desc:'請 Claude 翻譯 '+idx.length+' 句'+(total>idx.length?'（共 '+total+' 句，一次 80 句，匯入後再做下一批）':'')+'，Claude 會參考上下文，比機器翻譯自然。',
+      ctx:{idx},
+      prompt:P_HEAD+`請把下列英文句子翻成自然的繁體中文（台灣用語）。句子來自同一支影片，請參考上下文，但每句分開翻譯，忠實而簡潔。
+只輸出一個 JSON code block，格式：[{"i": 編號, "zh": "翻譯"}]，每句一個物件，編號照原樣。
+
+影片：${title}
+${JSON.stringify(idx.map(i=>({i,en:segs[i].t})),null,0)}`};
+  }
+  if(task==='an'){
+    if(cur<0)return {err:'先選一個句子。'};
+    let idx=opts.scope==='star'?segs.map((g,i)=>i).filter(i=>segs[i].star).slice(0,12):[cur];
+    if(!idx.length)return {err:'還沒有加星號的句子。'};
+    return {desc:opts.scope==='star'?'分析 '+idx.length+' 個星號句子（一次最多 12 句）。':'分析目前這一句。',ctx:{idx},
+      prompt:P_HEAD+`你是英文老師，幫一位在台灣、程度初中級、準備 TOEIC 的成人做跟讀（shadowing）練習。請分析下列句子。
+說明一律用繁體中文（台灣用語），英文例句保留英文。只輸出一個 JSON code block，格式是陣列，每句一個物件：
+[{
+ "i": 編號,
+ "zh": "自然的翻譯",
+ "pattern": "句型，例如 S + V + O + to-V",
+ "chunks": [{"text": "句子中的原文片段", "role": "S|V|O|C|M|X", "label": "主詞/動詞/受詞/補語/修飾語/連接詞…"}],
+ "grammar": [{"point": "重點名稱", "explain": "1–2 句說明"}],
+ "phrases": [{"en": "句中的實用片語或搭配詞", "zh": "意思"}],
+ "speech": {"linking": ["連音，例如 pick it up → /pɪ-kɪ-tʌp/"], "reduction": ["弱讀或縮讀"], "stress": "哪些字要重讀", "intonation": "語調上揚或下降及原因"},
+ "examples": [{"en": "用相同句型造的新句子", "zh": "翻譯"}],
+ "tip": "這句的跟讀小提示"
+}]
+chunks 要依序涵蓋整句，不可漏字。grammar 2–4 點、phrases 最多 4 個、examples 剛好 3 句（其中 1 句是職場情境）。
+
+${JSON.stringify(idx.map(i=>({i,sentence:segs[i].t,previous:segs[i-1]?segs[i-1].t:'',next:segs[i+1]?segs[i+1].t:''})),null,0)}`};
+  }
+  if(task==='word'){
+    let list=opts.only?vocab.filter(v=>v.id===opts.only):vocab.filter(v=>!v.ai);
+    const total=list.length; list=list.slice(0,20);
+    if(!list.length)return {err:vocab.length?'生字本裡的字都已經有 Claude 解說了。':'生字本是空的。先在練習時點單字加入。'};
+    return {desc:'請 Claude 深度解說 '+list.length+' 個字'+(total>list.length?'（共 '+total+' 個，一次 20 個）':'')+'：語境中的意思、英英解釋、例句、同反義詞、搭配詞、字族、學習說明與 TOEIC 提示。',ctx:{ids:list.map(v=>v.id)},
+      prompt:P_HEAD+`你是給台灣成人學習者（準備 TOEIC）用的英漢學習詞典。下列每個字都附上它在影片中出現的句子，請先解釋「在這句中的意思」，再補充一般用法。
+中文一律用繁體中文（台灣用語）。只輸出一個 JSON code block，格式是陣列，每個字一個物件：
+[{
+ "word": "原本給你的字（照抄）",
+ "lemma": "字典原形", "pos": "在這句中的詞性，如 v. / n. / adj.", "ipa_us": "/…/", "ipa_uk": "/…/", "level": "CEFR 等級，如 B1",
+ "zh_context": "在這句中的意思", "zh_other": ["其他常見意思"],
+ "def_en": "簡單的英英解釋",
+ "examples": [{"en": "", "zh": ""}],
+ "synonyms": [{"w": "", "note": "和原字的差別"}], "antonyms": [{"w": "", "note": ""}],
+ "collocations": ["常見搭配"], "family": ["字族，如 decide (v.) / decision (n.)"],
+ "notes": "學習說明：用法差異、常見錯誤、發音注意（2–4 句）",
+ "toeic": "在 TOEIC 中常見的情境（商務、辦公室、旅行），沒有就填空字串"
+}]
+examples 3 句（其中 1 句是職場情境）、synonyms 最多 4 個、antonyms 最多 3 個（沒有就給空陣列）、collocations 最多 5 個。
+
+${JSON.stringify(list.map(v=>({word:v.w,sentence:v.sent})),null,0)}`};
+  }
+  if(task==='acc'){
+    if(!vid)return {err:'先載入影片。'};
+    const sample=segs.slice(0,120).map(g=>g.t).join(' ').slice(0,5000);
+    return {desc:'請 Claude 依頻道、標題與字幕內容推測講者口音，並給你這種口音的聽音重點。',ctx:{},
+      prompt:P_HEAD+`請推測這支 YouTube 影片主要講者的英文口音，給準備 TOEIC 的台灣學習者參考。
+你聽不到聲音，只能依文字線索判斷：你可能知道的頻道或講者背景、地名、用字（lorry、mate、gotten、eh…）、人工字幕的拼字習慣（colour/color）。自動字幕的拼字反映的是辨識系統，不算證據。證據不足時請回答 Unknown 並給低信心。
+說明用繁體中文（台灣用語）。只輸出一個 JSON code block：
+{"code": "US|UK|AU|CA|IN|IE|NZ|Other|Unknown", "label_zh": "美式/英式/澳式/加拿大/印度/愛爾蘭/紐西蘭/其他/無法判斷", "confidence": 0-100,
+ "evidence": ["你用到的每項線索"], "caveat": "什麼資訊會改變判斷",
+ "listening_tips": ["3–4 個跟讀時要注意的口音特徵（母音、r 音、t 音、語調），附例字"],
+ "toeic_note": "這種口音和 TOEIC 聽力的關係（TOEIC 使用美、英、加、澳四種口音）"}
+
+影片標題：${title}
+頻道：${ch}
+字幕節錄：${sample||'（尚無字幕）'}`};
+  }
+  return {err:'未知的工作。'};
+}
+function importTask(task,text,ctx){
+  text=String(text||'').trim(); if(!text)throw new Error('請先貼上 Claude 的回覆。');
+  if(task==='punct'){
+    const lines=text.replace(/^```[a-z]*\s*/i,'').replace(/```\s*$/,'').split('\n')
+      .map(l=>l.trim().replace(/^[-*•]\s+/,'').replace(/^["“](.*)["”]$/,'$1')).filter(l=>l&&!l.startsWith('```'));
+    const words=ctx.words; if(!words.length)throw new Error('原字幕是空的。');
+    const {items,p}=alignSentences(lines,words);
+    if(items.length<2)throw new Error('對不上原字幕。請確認貼上的是 Claude 斷好句的英文。');
+    const full=p>=words.length-3, cover=full?segs[segs.length-1].e:words[p].s;
+    const out=items.map((o,k)=>{
+      const s=Math.max(0,words[o.i].s-0.1);
+      let e=k<items.length-1?words[items[k+1].i].s:cover; if(e<=s+0.3)e=s+0.6;
+      return {s,e,t:o.t};
+    });
+    if(!full)for(const g of segs)if(g.s>=cover-0.05)out.push({s:g.s,e:g.e,t:g.t});
+    applySegs(out,'Claude 斷句完成：共 '+out.length+' 句'+(full?'。':'，'+fmt(cover)+' 之後保留原本的切句。'));
+    return 'Claude 斷句已匯入，共 '+out.length+' 句。'+(full?'':'Claude 只處理到 '+fmt(cover)+'，可以再執行一次處理後面。');
+  }
+  const data=parseJSON(text);
+  if(task==='zh'){
+    let n=0; for(const it of arr(data))if(segs[it.i]&&typeof it.zh==='string'){segs[it.i].zh=it.zh;segs[it.i].zhSrc='claude';n++}
+    if(!n)throw new Error('沒有對上任何句子。');
+    if(!cfg.zh){cfg.zh=true;saveCfg()}
+    save(); renderList(); markList(); renderZh(); return '已匯入 '+n+' 句翻譯。';
+  }
+  if(task==='an'){
+    let n=0; for(const it of (Array.isArray(data)?data:[data])){const i=typeof it.i==='number'?it.i:(ctx.idx.length===1?ctx.idx[0]:-1);if(segs[i]){segs[i].an=it;n++}}
+    if(!n)throw new Error('沒有對上任何句子。');
+    save(); $('#anacard').hidden=false; renderAnalysis(); return '已匯入 '+n+' 句分析。';
+  }
+  if(task==='word'){
+    let n=0; for(const it of (Array.isArray(data)?data:[data])){
+      const w=String(it.word||it.lemma||'').toLowerCase();
+      const v=vocab.find(x=>ctx.ids.includes(x.id)&&(x.w.toLowerCase()===w||String(it.lemma||'').toLowerCase()===x.w.toLowerCase()))||(ctx.ids.length===1?vocab.find(x=>x.id===ctx.ids[0]):null);
+      if(v){v.ai=it;n++}
+    }
+    if(!n)throw new Error('沒有對上生字本裡的字。');
+    saveVocab(); if(!$('#viewVocab').hidden)renderVocab(); return '已匯入 '+n+' 個字的解說。';
+  }
+  if(task==='acc'){
+    if(!data||!data.label_zh&&!data.code)throw new Error('格式不對。');
+    meta.accent=data; save(); renderAccentChip(); if(!$('#acccard').hidden||true)renderAccent(); return '已匯入口音判斷：'+(data.label_zh||data.code)+'。';
+  }
+}
+function openHelper(task,opts){
+  closeSheet(); stopAll();
+  helper={task:task||helper.task,opts:opts||{},prompt:'',ctx:null};
+  $('#scrim').hidden=false; $('#helper').hidden=false; renderHelper();
+}
+function closeHelper(){$('#helper').hidden=true;if($('#sheet').hidden)$('#scrim').hidden=true}
+function renderHelper(){
+  const box=$('#helper'); box.textContent='';
+  const t=buildTask(helper.task,helper.opts); helper.prompt=t.prompt||''; helper.ctx=t.ctx||null;
+  box.appendChild(h('div',{class:'card-h'},h('h3',null,'Claude 助手'),h('button',{class:'btn small',onclick:closeHelper},'關閉')));
+  box.appendChild(h('p',{class:'note',style:'margin:0'},'用你自己的 Claude 帳號完成 AI 工作，不需要 API 金鑰：複製提示詞 → 貼到 Claude 對話 → 把 Claude 的回覆貼回來。'));
+  box.appendChild(h('div',{class:'seg'},TASKS.map(([k,l])=>h('button',{class:k===helper.task?'on':null,onclick:()=>{helper.task=k;helper.opts={};renderHelper()}},l))));
+  if(helper.task==='an')box.appendChild(h('div',{class:'seg'},[['cur','目前這句'],['star','星號句子']].map(([k,l])=>h('button',{class:(helper.opts.scope||'cur')===k?'on':null,onclick:()=>{helper.opts.scope=k;renderHelper()}},l))));
+  if(helper.task==='zh')box.appendChild(h('label',{class:'note',style:'display:flex;gap:6px;align-items:center'},
+    h('input',{type:'checkbox',checked:helper.opts.all?true:null,onchange:e=>{helper.opts.all=e.target.checked;renderHelper()}}),'包含已經由 Claude 翻譯過的句子'));
+  if(t.err){box.appendChild(h('p',{class:'err'},t.err));return}
+  box.appendChild(h('p',{style:'margin:0'},t.desc));
+  const pv=h('textarea',{readonly:true,'aria-label':'提示詞內容'}); pv.value=helper.prompt;
+  const pvWrap=h('details',null,h('summary',{class:'note',style:'cursor:pointer'},'查看提示詞（'+helper.prompt.length.toLocaleString()+' 字元）'),pv);
+  const copyMsg=h('span',{class:'note'});
+  const copyBtn=h('button',{class:'btn small claude solid',onclick:()=>{
+    const done=()=>{copyMsg.textContent='已複製，貼到 Claude 對話送出。'};
+    try{navigator.clipboard.writeText(helper.prompt).then(done,()=>{pvWrap.open=true;pv.focus();pv.select();copyMsg.textContent='無法自動複製，請在下方全選後手動複製。'})}
+    catch(e){pvWrap.open=true;pv.focus();pv.select();copyMsg.textContent='無法自動複製，請在下方全選後手動複製。'}
+  }},'複製提示詞');
+  box.appendChild(h('div',{class:'step'},h('h4',null,h('span',null,'1'),'複製提示詞，貼到 Claude'),
+    h('div',{class:'recrow'},copyBtn,h('a',{class:'btn small',href:'https://claude.ai/new',target:'_blank',rel:'noopener'},'開啟 Claude ↗'),copyMsg),
+    h('p',{class:'note',style:'margin:0'},'也可以貼到你的「English study」專案對話裡。'),pvWrap));
+  const ta=h('textarea',{'aria-label':'貼上 Claude 的回覆',placeholder:'把 Claude 回覆中的 code block 整個複製貼到這裡'});
+  const msg=h('span',{class:'note'});
+  box.appendChild(h('div',{class:'step'},h('h4',null,h('span',null,'2'),'貼上 Claude 的回覆'),ta,
+    h('div',{class:'recrow'},h('button',{class:'btn small primary',onclick:()=>{
+      try{const ctx=helper.ctx;const r=importTask(helper.task,ta.value,ctx);msg.className='note';msg.textContent=r;ta.value='';toast(r)}
+      catch(e){msg.className='err';msg.textContent=e.message}
+    }},'匯入結果'),msg)));
+}
+
+/* ---------- vocab view ---------- */
+let vsel=null, vsortMode='new', reviewQ=null;
+const INTERVALS=[0,1,2,4,8,16,32];
+function showView(v){
+  $('#viewPractice').hidden=v!=='practice'; $('#viewVocab').hidden=v!=='vocab';
+  $('#tabPractice').classList.toggle('on',v==='practice'); $('#tabVocab').classList.toggle('on',v==='vocab');
+  if(v==='vocab')renderVocab(); else reviewQ=null;
+}
+function showVocab(id){vsel=id;reviewQ=null;showView('vocab')}
+function dueCount(){const n=Date.now();return vocab.filter(v=>(v.due||0)<=n).length}
+function zhShort(v){return v.ai&&v.ai.zh_context||v.info&&v.info.zh&&(v.info.zh.main||arr(v.info.zh.byPos).map(r=>arr(r.terms)[0]).filter(Boolean).join('、'))||''}
+function renderVocab(){
+  const q=$('#vsearch').value.trim().toLowerCase();
+  let list=vocab.filter(v=>!q||v.w.toLowerCase().includes(q)||zhShort(v).toLowerCase().includes(q));
+  if(vsortMode==='az')list=list.slice().sort((a,b)=>a.w.localeCompare(b.w));
+  else if(vsortMode==='due')list=list.slice().sort((a,b)=>(a.due||0)-(b.due||0));
+  const ul=$('#vlist'); ul.textContent='';
+  for(const v of list)ul.appendChild(h('li',{class:v.id===vsel?'cur':null,onclick:()=>{vsel=v.id;reviewQ=null;$('#vdetail').classList.remove('review');renderVocab()}},
+    h('b',null,(v.ai&&v.ai.lemma)||(v.info&&v.info.lemma)||v.w),h('span',null,zhShort(v)||'（未查詢）')));
+  $('#vempty').hidden=list.length>0;
+  $('#vempty').textContent=vocab.length?'沒有符合的單字。':'還沒有生字。練習時點句子裡的單字，按「加入生字本」。';
+  $('#duetext').textContent=vocab.length?(dueCount()+' 個待複習'):'';
+  $('#vcount').textContent=vocab.length;
+  if(reviewQ)renderReview(); else renderVocabDetail();
+}
+async function refreshInfo(v){
+  try{v.info=await lookupDict(v.w,v.sent);saveVocab();toast('已更新字典資料')}
+  catch(e){toast('查詢失敗：'+e.message,6000)}
+  renderVocab();
+}
+let vdelArmed=false;
+function renderVocabDetail(){
+  const box=$('#vdetail'); box.textContent=''; box.classList.remove('review'); vdelArmed=false;
+  const v=vocab.find(x=>x.id===vsel);
+  if(!v){box.appendChild(h('p',{class:'note'},vocab.length?'選一個單字查看完整說明。':'生字本是空的。'));return}
+  const i=v.info||{}, a=v.ai, head=(a&&a.lemma)||i.lemma||v.w;
+  box.appendChild(h('div',{class:'card-h'},
+    h('div',{class:'hwrow'},h('span',{class:'hw'},head),a&&a.pos?h('span',{class:'pos'},a.pos):null,a&&a.level?h('span',{class:'tag'},a.level):null),
+    h('div',{class:'recrow'},h('button',{class:'btn small claude',onclick:()=>openHelper('word',{only:v.id})},a?'請 Claude 重新解說':'請 Claude 解說'),cambridge(head))));
+  if(a&&(a.ipa_us||a.ipa_uk)&&!arr(i.phonetics).length)box.appendChild(h('div',{class:'ipa'},a.ipa_us?h('span',null,'美 '+a.ipa_us,spk(head,'en-US')):null,a.ipa_uk?h('span',null,'英 '+a.ipa_uk,spk(head,'en-GB')):null));
+  else box.appendChild(phonRow(v.info,head));
+  if(a){
+    if(a.zh_context)box.appendChild(h('p',{class:'zhbig'},a.zh_context,' ',h('span',{class:'src cl'},'Claude')));
+    if(arr(a.zh_other).length)box.appendChild(h('p',{class:'note',style:'margin:0'},'其他意思：'+arr(a.zh_other).join('；')));
+  }
+  if(!a||!a.zh_context){const z=zhBlock(i);if(z)box.appendChild(z)}
+  box.appendChild(h('div',{class:'sec'},h('h4',null,'在影片中的句子'),
+    h('p',{style:'font-family:var(--f-read)'},highlight(v.sent,v.w),' ',spk(v.sent,'en-US','朗讀句子')),
+    v.sentZh?h('p',{class:'note'},v.sentZh):null,
+    h('div',{class:'recrow'},h('span',{class:'note'},(v.title||'影片')+' · '+fmt(v.t)),
+      v.vid?h('button',{class:'btn small',onclick:()=>{showView('practice');$('#url').value='https://youtu.be/'+v.vid;if(vid===v.vid){const k=findSeg(v.t);if(k>=0)select(k)}else loadVideo(v.vid,v.t)}},'回到這一句練習'):null)));
+  if(a){
+    if(a.def_en)box.appendChild(h('div',{class:'sec'},h('h4',null,'英英解釋'),h('p',{style:'font-family:var(--f-read)'},a.def_en)));
+    if(arr(a.examples).length)box.appendChild(h('div',{class:'sec'},h('h4',null,'例句'),arr(a.examples).map(x=>h('div',{class:'ex'},h('span',{class:'en'},x.en,' ',spk(x.en,'en-US')),h('span',{class:'cn'},x.zh)))));
+    const tagSec=(title,items)=>items.length?h('div',{class:'sec'},h('h4',null,title),h('div',{class:'tags'},items)):null;
+    box.appendChild(h('div',{class:'stage',style:'gap:12px'},
+      tagSec('同義詞',arr(a.synonyms).map(s=>h('span',{class:'tag'},s.w||s,s.note?h('i',null,s.note):null))),
+      tagSec('反義詞',arr(a.antonyms).map(s=>h('span',{class:'tag'},s.w||s,s.note?h('i',null,s.note):null))),
+      tagSec('常見搭配',arr(a.collocations).map(c=>h('span',{class:'tag'},c))),
+      tagSec('字族',arr(a.family).map(c=>h('span',{class:'tag'},c)))));
+    if(a.notes)box.appendChild(h('div',{class:'sec'},h('h4',null,'學習說明'),h('p',null,a.notes)));
+    if(a.toeic)box.appendChild(h('div',{class:'sec'},h('h4',null,'TOEIC 提示'),h('p',null,a.toeic)));
+  }
+  if(v.info){
+    const d=defsBlock(i,3,3); if(d)box.appendChild(h('div',{class:'sec'},h('h4',null,'英英字典'+(a?'（補充）':'')),d));
+    if(!a)box.append(...synAnt(i).filter(Boolean));
+  }else if(!a)box.appendChild(h('div',{class:'recrow'},h('span',{class:'note'},'還沒有字典資料。'),h('button',{class:'btn small',onclick:()=>refreshInfo(v)},'查字典')));
+  if(!a)box.appendChild(h('p',{class:'note',style:'margin:0'},'想看語境解釋、例句翻譯、搭配詞、字族、學習說明與 TOEIC 提示，按「請 Claude 解說」。多個字可以在生字本上方一次請 Claude 解說。'));
+  const del=h('button',{class:'btn small'},'刪除這個字'), delNote=h('span',{class:'note'});
+  del.onclick=()=>{if(!vdelArmed){vdelArmed=true;delNote.textContent='再按一次確認刪除';return}vocab=vocab.filter(x=>x.id!==v.id);vsel=null;saveVocab();renderVocab()};
+  box.appendChild(h('div',{class:'recrow',style:'border-top:1px solid var(--line);padding-top:10px'},
+    h('span',{class:'note'},'熟悉度 '+(v.box||0)+' / 6 · 下次複習 '+new Date(v.due||Date.now()).toLocaleDateString('zh-TW')),del,delNote));
+}
+function startReview(){
+  const n=Date.now(); const q=vocab.filter(v=>(v.due||0)<=n).sort((a,b)=>(a.due||0)-(b.due||0));
+  if(!q.length){toast(vocab.length?'目前沒有到期的單字。':'生字本是空的。');return}
+  reviewQ={list:q.map(v=>v.id),i:0,show:false,ok:0}; renderReview();
+}
+function renderReview(){
+  const box=$('#vdetail'); box.textContent=''; box.classList.add('review');
+  const r=reviewQ; if(!r)return;
+  if(r.i>=r.list.length){
+    box.append(h('span',{class:'hw'},'複習完成'),h('p',{class:'note'},'記得 '+r.ok+' / '+r.list.length+' 個'),
+      h('button',{class:'btn primary',onclick:()=>{reviewQ=null;renderVocab()}},'回到生字本'));
+    return;
+  }
+  const v=vocab.find(x=>x.id===r.list[r.i]); if(!v){r.i++;renderReview();return}
+  const head=(v.ai&&v.ai.lemma)||(v.info&&v.info.lemma)||v.w;
+  box.append(h('span',{class:'note mono'},(r.i+1)+' / '+r.list.length),h('span',{class:'hw'},head),phonRow(v.info,head),h('p',{class:'ctx'},highlight(v.sent,v.w)));
+  if(!r.show){box.appendChild(h('button',{class:'btn primary',onclick:()=>{r.show=true;renderReview()}},'顯示答案'));return}
+  const def=(v.ai&&v.ai.def_en)||(arr(v.info&&v.info.meanings)[0]&&arr(v.info.meanings[0].defs)[0]&&v.info.meanings[0].defs[0].def)||'';
+  box.append(h('p',{class:'zhbig'},zhShort(v)||'（未查詢）'),def?h('p',{class:'note',style:'margin:0'},def):null,
+    h('div',{class:'grades'},
+      h('button',{class:'btn',onclick:()=>grade(v,0)},'忘了'),
+      h('button',{class:'btn',onclick:()=>grade(v,1)},'模糊'),
+      h('button',{class:'btn primary',onclick:()=>grade(v,2)},'記得')));
+}
+function grade(v,g){
+  const day=864e5;
+  if(g===0){v.box=0;v.due=Date.now()+10*60e3}
+  else if(g===1){v.box=Math.max(1,v.box||0);v.due=Date.now()+day}
+  else{v.box=Math.min(6,(v.box||0)+1);v.due=Date.now()+INTERVALS[v.box]*day;reviewQ.ok++}
+  saveVocab(); reviewQ.i++; reviewQ.show=false; renderReview(); $('#duetext').textContent=dueCount()+' 個待複習';
+}
+function exportCSV(){
+  if(!vocab.length){toast('生字本是空的。');return}
+  const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';
+  const rows=[['word','phonetic','chinese','english_definition','example','example_zh','video_sentence','sentence_zh','video_link']];
+  for(const v of vocab){
+    const a=v.ai||{}, i=v.info||{}, ex=arr(a.examples)[0]||{};
+    const ph=a.ipa_us||(arr(i.phonetics)[0]||{}).text||'';
+    const def=a.def_en||(arr(i.meanings)[0]&&arr(i.meanings[0].defs)[0]&&i.meanings[0].defs[0].def)||'';
+    rows.push([a.lemma||i.lemma||v.w,ph,zhShort(v),def,ex.en,ex.zh,v.sent,v.sentZh,v.vid?'https://youtu.be/'+v.vid+'?t='+Math.floor(v.t||0):'']);
+  }
+  const blob=new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=h('a',{href:URL.createObjectURL(blob),download:'shadow-loop-vocab.csv'});document.body.appendChild(a);a.click();a.remove();
+  toast('已匯出 '+vocab.length+' 個單字');
+}
+
+/* ---------- events ---------- */
+$('#urlform').addEventListener('submit',e=>{
+  e.preventDefault();
+  const id=parseId($('#url').value);
+  if(!id){showErr('看不出這是 YouTube 網址。支援 youtube.com/watch?v=…、youtu.be/…、/shorts/…');return}
+  showView('practice'); loadVideo(id);
+});
+$('#tabPractice').onclick=()=>showView('practice');
+$('#tabVocab').onclick=()=>{stopAll();showView('vocab')};
+$('#bplay').onclick=togglePlay;
+$('#bprev').onclick=()=>go(-1);
+$('#bnext').onclick=()=>go(1);
+$('#breplay').onclick=()=>{if(segs.length)playSeg(Math.max(cur,0))};
+$('#brec').onclick=toggleRec;
+$('#bmine').onclick=playMine;
+$('#bcompare').onclick=compare;
+$('#bfree').onclick=()=>{if(!playerReady)return;clearGap();mode='free';if(cur>=0)player.seekTo(segs[cur].s,true);player.playVideo();renderPlayIcon()};
+$('#bmark').onclick=mark;
+$('#bzh').onclick=()=>{cfg.zh=!cfg.zh;saveCfg();renderZh();renderList();markList();if(cfg.zh)translateMissing()};
+$('#banalyze').onclick=()=>{if($('#anacard').hidden)analyze();else $('#anacard').hidden=true};
+$('#bclaude').onclick=()=>openHelper(helper.task);
+$('#accchip').onclick=()=>{if($('#acccard').hidden)renderAccent();else $('#acccard').hidden=true};
+$('#bpunct').onclick=()=>openHelper('punct');
+$('#bvclaude').onclick=()=>openHelper('word');
+$('#nowline').addEventListener('click',e=>{
+  const n=$('#nowline');
+  if(cfg.blind&&!n.classList.contains('peek')){n.classList.add('peek');return}
+  const w=e.target.closest('.wd'); if(w)openWord(w.dataset.w);
+});
+$('#prevline').onclick=()=>go(-1);
+$('#nextline').onclick=()=>go(1);
+$('#scrim').onclick=()=>{closeSheet();closeHelper()};
+$('#cauto').onchange=e=>{cfg.auto=e.target.checked;saveCfg()};
+$('#cblind').onchange=e=>{cfg.blind=e.target.checked;saveCfg();renderCurrent()};
+$('#crecsync').onchange=e=>{cfg.recSync=e.target.checked;saveCfg()};
+$('#cmerge').onchange=e=>{cfg.merge=e.target.checked;saveCfg()};
+document.querySelectorAll('[data-adj]').forEach(b=>b.onclick=()=>{const [f,v]=b.dataset.adj.split(',');adjust(f,v==='now'?'now':+v)});
+$('#edittext').addEventListener('change',e=>{const g=segs[cur];if(!g)return;const t=e.target.value.trim();if(t&&t!==g.t){g.t=t;delete g.zh;delete g.an;delete g.basic;save();renderCurrent();renderList();markList()}});
+$('#bmerge').onclick=()=>{
+  if(cur<0||cur>=segs.length-1)return;
+  const a=segs[cur],b=segs[cur+1]; a.t=a.t+' '+b.t; a.e=b.e; a.star=a.star||b.star; a.zh=a.zh&&b.zh?a.zh+b.zh:undefined; delete a.an; delete a.basic; segs.splice(cur+1,1); stopAll(); structural();
+};
+$('#bdel').onclick=()=>{
+  if(cur<0)return;
+  if(!delArmed){delArmed=true;$('#delconfirm').textContent='再按一次確認刪除';return}
+  segs.splice(cur,1); cur=Math.min(cur,segs.length-1); repsDone=0; stopAll(); structural();
+};
+$('#list').addEventListener('click',e=>{
+  const st=e.target.closest('[data-star]');
+  if(st){const g=segs[+st.dataset.star];g.star=!g.star;save();renderList();markList();return}
+  const li=e.target.closest('li'); if(li)playSeg(+li.dataset.i);
+});
+$('#sfilter').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return; filter=b.dataset.f;
+  $('#sfilter').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b)); renderList(); markList(true);
+});
+$('#impfile').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader(); r.onload=()=>{$('#imptext').value=r.result;$('#impmsg').textContent='已讀取 '+f.name+'，按「套用貼上的字幕」。'}; r.readAsText(f);
+});
+$('#bimport').onclick=()=>{
+  if(!vid){$('#impmsg').textContent='請先載入影片。';return}
+  if(!importText($('#imptext').value,'已匯入字幕')){$('#impmsg').textContent='找不到時間戳記。請貼上含時間（如 0:12）的逐字稿，或 .srt / .vtt 內容。';return}
+  $('#impmsg').textContent=''; $('#imptext').value='';
+};
+$('#bmlink').addEventListener('click',e=>{e.preventDefault();toast('請把這個按鈕拖曳到書籤列，再到 YouTube 影片頁使用。',5000)});
+/* paste a transcript anywhere on the page */
+document.addEventListener('paste',e=>{
+  const t=e.target; if(/INPUT|TEXTAREA/.test(t.tagName)||t.isContentEditable||!vid)return;
+  const text=(e.clipboardData||window.clipboardData).getData('text'); if(!text)return;
+  if(parseTimed(text).length<2)return;
+  e.preventDefault();
+  if(segs.length){$('#imp').open=true;$('#imptext').value=text;$('#impstatus').textContent='已貼上字幕。這支影片已經有句子，要取代請按「套用字幕」。';return}
+  importText(text,'已貼上字幕');
+});
+/* backup / restore everything kept in this browser */
+$('#bbackup').onclick=()=>{
+  const data={app:'shadow-loop',ver:4,at:new Date().toISOString(),vocab,recent:store.get('sl:recent',[]),cfg,videos:{}};
+  try{for(let k=0;k<localStorage.length;k++){const key=localStorage.key(k);if(key&&key.startsWith('sl:v:'))data.videos[key.slice(5)]=store.get(key,null)}}catch(e){}
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const a=h('a',{href:URL.createObjectURL(blob),download:'shadow-loop-backup-'+new Date().toISOString().slice(0,10)+'.json'});
+  document.body.appendChild(a);a.click();a.remove();
+  toast('已備份 '+Object.keys(data.videos).length+' 支影片、'+vocab.length+' 個生字');
+};
+$('#brestore').onclick=()=>$('#restorefile').click();
+$('#restorefile').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let d; try{d=JSON.parse(r.result)}catch(x){toast('這不是 Shadow Loop 的備份檔。');return}
+    if(!d||d.app!=='shadow-loop'){toast('這不是 Shadow Loop 的備份檔。');return}
+    let nv=0,nw=0;
+    for(const [id,val] of Object.entries(d.videos||{})){
+      if(!/^[\w-]{11}$/.test(id)||!val)continue;
+      const mine=loadData(id), theirs=Array.isArray(val)?{segs:val,meta:{}}:val;
+      const score=x=>arr(x.segs).reduce((n,g)=>n+(g.done||0)+(g.an?2:0)+(g.zh?1:0),0)+arr(x.segs).length/1000;
+      if(!mine.segs.length||score(theirs)>score(mine)){store.set('sl:v:'+id,theirs);nv++}
+    }
+    for(const v of arr(d.vocab)){
+      if(!v||!v.w)continue;
+      const ex=vocab.find(x=>x.w.toLowerCase()===String(v.w).toLowerCase());
+      if(!ex){vocab.push(v);nw++}else{if(!ex.ai&&v.ai)ex.ai=v.ai;if(!ex.info&&v.info)ex.info=v.info}
+    }
+    const rec=store.get('sl:recent',[]);
+    for(const x of arr(d.recent))if(x&&x.id&&!rec.some(y=>y.id===x.id))rec.push(x);
+    store.set('sl:recent',rec.slice(0,20));
+    saveVocab(); renderRecent(); renderVocab();
+    if(vid){const dd=loadData(vid);segs=dd.segs;meta=dd.meta||{};if(cur>=segs.length)cur=segs.length-1;renderAll()}
+    toast('已還原：'+nv+' 支影片、'+nw+' 個新生字');
+    e.target.value='';
+  };
+  r.readAsText(f);
+});
+$('#vsearch').addEventListener('input',renderVocab);
+$('#vsort').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;vsortMode=b.dataset.s;$('#vsort').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));renderVocab()});
+$('#breview').onclick=startReview;
+$('#bexport').onclick=exportCSV;
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){if(!$('#sheet').hidden){closeSheet();return}if(!$('#helper').hidden){closeHelper();return}}
+  const t=e.target; if(/INPUT|TEXTAREA|SELECT/.test(t.tagName)||t.isContentEditable||e.metaKey||e.ctrlKey||e.altKey)return;
+  if(!vid||$('#viewPractice').hidden||!$('#sheet').hidden||!$('#helper').hidden)return;
+  const k=e.key.toLowerCase();
+  if(e.key===' '){e.preventDefault();togglePlay()}
+  else if(e.key==='ArrowRight'){e.preventDefault();go(1)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();go(-1)}
+  else if(k==='r'){if(segs.length)playSeg(Math.max(cur,0))}
+  else if(k==='t'){$('#bzh').click()}
+  else if(k==='a'){$('#banalyze').click()}
+  else if(k==='c'){openHelper(helper.task)}
+  else if(k==='h'){cfg.blind=!cfg.blind;saveCfg();renderSettings();renderCurrent()}
+  else if(k==='s'){if(segs[cur]){segs[cur].star=!segs[cur].star;save();renderList();markList()}}
+  else if(k==='m'){mark()}
+  else if(k==='v'){toggleRec()}
+});
+
+renderSettings(); renderRecent(); saveVocab(); renderZh();
+$('#bmlink').href='javascript:'+encodeURIComponent(bookmarkletCode());
+window.__SL={parseTimed,mergeSentences,mergeByPause,parseId,alignSentences,toWords,parseJSON,hasPunctuation};
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/compromise@14.14.4/builds/compromise.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
