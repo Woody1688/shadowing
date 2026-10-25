@@ -286,6 +286,7 @@ mark{background:var(--accent-soft);color:inherit;border-radius:3px;padding:0 2px
 .review .zhbig{font-size:1.25rem;max-width:30ch}
 .review .ctx.mono{font-size:.95rem;letter-spacing:.02em}
 @media (prefers-reduced-motion:reduce){.now [data-k]{transition:none}}
+.slist b{display:block!important;-webkit-line-clamp:unset!important;overflow:visible!important}
 /* ---- v6 ---- */
 .synrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .synrow .lbl2{font-size:.85rem;font-weight:600;min-width:4.5em}
@@ -301,6 +302,10 @@ mark{background:var(--accent-soft);color:inherit;border-radius:3px;padding:0 2px
 .expgrid .btn small{font-size:.78rem;color:var(--muted);font-weight:400}
 .exppre{margin:0;max-height:220px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font:.8rem/1.5 var(--f-mono);white-space:pre-wrap;overflow-wrap:anywhere}
 .warnrow{background:var(--star-soft);border-radius:8px;padding:8px 10px;font-size:.88rem}
+/* ---- v6.2 complete sentences ---- */
+.segnote{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--star-soft);border-radius:8px;padding:8px 12px;font-size:.86rem}
+.segnote span{flex:1 1 220px;min-width:0}
+.now [data-k].cb::after{content:"";display:inline-block;width:2px;height:.8em;margin-left:.35em;vertical-align:-.05em;background:var(--line);border-radius:1px}
 /* ---- v6.1 phones ---- */
 .subd summary{cursor:pointer;font-size:.85rem;color:var(--accent);padding:4px 0}
 .subd .steps{margin:6px 0;padding-left:1.2em;gap:4px}
@@ -312,7 +317,7 @@ mark{background:var(--accent-soft);color:inherit;border-radius:3px;padding:0 2px
 .mbar .ico.big{width:52px;height:52px}
 .mtxt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;border:0;background:none;padding:2px 4px;text-align:left;color:var(--ink)}
 .mtxt b{font:600 .72rem/1.3 var(--f-ui);color:var(--muted)}
-.mtxt span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font:400 .95rem/1.35 var(--f-read)}
+.mtxt span{max-width:100%;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font:400 .9rem/1.35 var(--f-read)}
 .mstar{font-size:1.2rem;color:var(--muted)}
 .mstar.on{color:var(--star)}
 body.has-mbar{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
@@ -397,6 +402,7 @@ body.has-mbar .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
               <div class="seg mode" id="smode" role="group" aria-label="練習方式"></div>
               <p class="note" id="modehint"></p>
             </div>
+            <div class="segnote" id="segnote" hidden></div>
             <div class="meta">
               <span class="mono" id="segpos">—</span>
               <span class="recrow"><span class="src" id="timechip" hidden></span><span class="dots" id="dots"></span></span>
@@ -440,6 +446,7 @@ body.has-mbar .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
               <button class="btn small" id="bstar">☆ 收藏</button>
               <button class="btn small" id="bzh">中文翻譯：關</button>
               <button class="btn small" id="banalyze">句構</button>
+              <button class="btn small" id="bchunk" hidden title="長句一段一段播（G）">分段播放</button>
               <button class="btn small" id="bsplit">切分</button>
               <button class="btn small claude" id="bclaude">Claude 助手</button>
             </div>
@@ -501,7 +508,7 @@ body.has-mbar .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
             </details>
             <div class="keys">
               <span><kbd>空白</kbd> 開始/停止</span><span><kbd>←</kbd><kbd>→</kbd> 上/下一句</span><span><kbd>1</kbd>–<kbd>4</kbd> 練習方式</span><span><kbd>R</kbd> 重練</span>
-              <span><kbd>S</kbd> 收藏</span><span><kbd>X</kbd> 切分</span><span><kbd>T</kbd> 中文</span><span><kbd>A</kbd> 句構</span><span><kbd>C</kbd> Claude</span><span><kbd>H</kbd> 隱藏字幕</span><span><kbd>V</kbd> 錄音</span><span><kbd>E</kbd> 匯出逐字稿</span>
+              <span><kbd>S</kbd> 收藏</span><span><kbd>X</kbd> 切分</span><span><kbd>G</kbd> 分段播放</span><span><kbd>T</kbd> 中文</span><span><kbd>A</kbd> 句構</span><span><kbd>C</kbd> Claude</span><span><kbd>H</kbd> 隱藏字幕</span><span><kbd>V</kbd> 錄音</span><span><kbd>E</kbd> 匯出逐字稿</span>
             </div>
           </div>
         </div>
@@ -552,12 +559,12 @@ body.has-mbar .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
             <div class="row"><input type="file" id="impfile" accept=".srt,.vtt,.txt,.json,text/plain,application/json" aria-label="上傳字幕檔"></div>
             <div class="row"><button class="btn small" id="bimport">套用字幕</button><span class="note" id="impmsg"></span></div>
             <div class="sec">
-              <h4>自動切句</h4>
-              <div class="row"><div class="seg" id="slen"><button data-l="short">短句</button><button data-l="mid">標準</button><button data-l="long">長句</button></div>
+              <h4>斷句方式</h4>
+              <div class="row"><div class="seg" id="slen"><button data-l="full">完整句子</button><button data-l="mid">標準</button><button data-l="short">短句</button></div>
                 <button class="btn small" id="bresplit">重新切句</button></div>
-              <p class="note" style="margin:0">依停頓、標點與連接詞找出最自然的切點。換了句長偏好後按「重新切句」，收藏的句子會保留。</p>
+              <p class="note" style="margin:0">完整句子：依 YouTube 字幕的句號、問號、驚嘆號斷句，一句就是一個完整句子，長句不拆開（可用「分段播放」一段段練）。標準、短句：再依停頓與連接詞切成較短的片段。點選後立即重新切句，收藏的句子會保留。</p>
             </div>
-            <div class="row"><button class="btn small claude" id="bpunct">用 Claude 補標點斷句</button><span class="note">自動字幕沒有標點時使用，時間會沿用逐字時間</span></div>
+            <div class="row"><button class="btn small claude" id="bpunct">交給 Claude 補成完整句子</button><span class="note">影片只有自動字幕（沒有標點）時使用，時間沿用逐字時間</span></div>
           </div>
         </details>
       </div>
@@ -664,8 +671,10 @@ const toks=t=>String(t||'').split(/\s+/).filter(Boolean);
 /* ---------- state ---------- */
 let player=null, playerReady=false, apiReady=false, pendingId=null;
 let vid=null, meta={}, segs=[], cur=-1;
-const cfg=Object.assign({speed:1,reps:3,gap:1,auto:true,blind:false,recSync:true,zh:false,mode:'repeat',hl:true,link:true,len:'mid',hlOff:0},store.get('sl:cfg',{}));
+const cfg=Object.assign({speed:1,reps:3,gap:1,auto:true,blind:false,recSync:true,zh:false,mode:'repeat',hl:true,link:true,len:'full',hlOff:0},store.get('sl:cfg',{}));
 if(!['repeat','overlap','shadow','dict'].includes(cfg.mode))cfg.mode='repeat';
+if(!cfg.v62){cfg.len='full';cfg.v62=1;try{localStorage.setItem('sl:cfg',JSON.stringify(cfg))}catch(e){}}
+if(!['full','mid','short'].includes(cfg.len))cfg.len='full';
 let mode='idle';            /* engine: idle | loop | once | gap | free */
 let win=null;               /* window being played: {s,e,kind,i,cb,rate,armed} */
 let repsDone=0, seekAt=0, gapTimer=null, gapEndAt=0, gapDur=0, gapLabel='換你說';
@@ -778,32 +787,34 @@ function fragsToTokens(frags,hasEnd){
   const ratios=list.map(({f,ws})=>{const span=(+f.e)-f.s,W=ws.reduce((n,w)=>n+wWeight(w),0);return span>0&&span<12?span/W:null}).filter(Boolean).sort((a,b)=>a-b);
   const R=ratios.length?ratios[Math.floor(ratios.length*0.35)]:0.2;
   const out=[];
-  for(const {f,ws} of list){
+  list.forEach(({f,ws},n)=>{
     let e=+f.e; if(!(e>f.s))e=f.s+Math.max(1,ws.length*0.35);
+    const nx=list[n+1];if(nx&&nx.f.s>f.s&&e>nx.f.s)e=nx.f.s;   /* overlapping cues: stop at the next one */
     if(!hasEnd){const W=ws.reduce((n,w)=>n+wWeight(w),0);e=Math.min(e,f.s+W*R*1.05+0.25)}
     const st=spread(ws,f.s,e);
     ws.forEach((w,j)=>{const tk={w,s:st[j]};if(j===ws.length-1)tk.e=e;out.push(tk)});
-  }
+  });
   return finalizeTokens(out);
 }
 /* YouTube caption events [{t,d,s:[[text,offsetMs]...]}]. Auto captions carry
    one word per piece with its own offset → exact word starts. */
 function json3ToTokens(evs,asr){
+  /* keep every caption line's own word order: sort lines by start time, never sort words
+     across lines, and end each line where the next one starts (cues may overlap) */
+  const list=arr(evs).map(ev=>({t0:(+(ev&&ev.t)||0)/1000,d:(+(ev&&ev.d)||0)/1000,ss:arr(ev&&ev.s).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&x[0].trim())}))
+    .filter(x=>x.ss.length).sort((a,b)=>a.t0-b.t0);
   const out=[];
-  for(const ev of arr(evs)){
-    const ss=arr(ev&&ev.s).filter(x=>Array.isArray(x)&&typeof x[0]==='string'&&x[0].trim());
-    if(!ss.length)continue;
-    const t0=(+ev.t||0)/1000, t1=t0+(+ev.d||0)/1000;
-    ss.forEach((sg,k)=>{
-      const a=t0+(+sg[1]||0)/1000;
-      let b=k+1<ss.length?t0+(+ss[k+1][1]||0)/1000:t1; if(!(b>a))b=a+0.4;
+  list.forEach((ev,n)=>{
+    const nx=list[n+1];let t1=ev.t0+ev.d;if(nx&&nx.t0>ev.t0&&(t1>nx.t0||!(t1>ev.t0)))t1=nx.t0;
+    ev.ss.forEach((sg,k)=>{
+      const a=ev.t0+(+sg[1]||0)/1000;
+      let b=k+1<ev.ss.length?ev.t0+(+ev.ss[k+1][1]||0)/1000:t1; if(!(b>a))b=a+0.4;
       const ws=toks(clean(sg[0])); if(!ws.length)return;
       if(asr&&ws.length===1){out.push({w:ws[0],s:a,x:1});return}
       const st=spread(ws,a,b);
-      ws.forEach((w,j)=>{const tk={w,s:st[j]};if(asr&&ws.length>1&&ss.length>1)tk.x=j===0?1:0;if(!asr&&k===ss.length-1&&j===ws.length-1)tk.e=b;out.push(tk)});
+      ws.forEach((w,j)=>{const tk={w,s:st[j]};if(asr&&ws.length>1&&ev.ss.length>1)tk.x=j===0?1:0;if(!asr&&k===ev.ss.length-1&&j===ws.length-1)tk.e=b;out.push(tk)});
     });
-  }
-  out.sort((p,q)=>p.s-q.s);
+  });
   return finalizeTokens(out);
 }
 /* give tokens the times of matching words in ref (exact word timings).
@@ -837,11 +848,18 @@ function alignToRef(tokens,ref,maxDrift){
   for(let i=1;i<tokens.length;i++)if(tokens[i].s<tokens[i-1].s)tokens[i].s=tokens[i-1].s+0.01;
   return {rate:tokens.length?m/tokens.length:0,last};
 }
-const ABBR=/^(mr|mrs|ms|dr|prof|sr|jr|st|vs|etc|e\.g|i\.e|u\.s|u\.k|inc|ltd|no)\.$/i;
-function isEnd(w){const c=String(w).replace(/["'”’)\]]+$/,'');return /[.?!…]$/.test(c)&&!ABBR.test(c)&&!/^[A-Z]\.$/.test(c)}
+const ABBR=/^(mr|mrs|ms|dr|prof|sr|jr|st|vs|etc|e\.g|i\.e|u\.s|u\.k|inc|ltd|no|a\.m|p\.m|approx|dept|est|fig|vol)\.$/i;
+/* a sentence-final word: . ? ! (not abbreviations, initials or a trailing "...") */
+function isEnd(w){const c=String(w).replace(/["'”’)\]]+$/,'');return /[.?!]$/.test(c)&&!/\.\.\.$|…$/.test(c)&&!ABBR.test(c)&&!/^[A-Z]\.$/.test(c)&&!/^(?:[a-z]\.){2,}$/i.test(c)}
+const softEnd=w=>/(\.\.\.|…)["'”’)\]]*$/.test(String(w));
 function tokPunct(tokens){return tokens.filter(t=>/[.?!]["'”’)\]]*$/.test(t.w)).length>=Math.max(2,tokens.length/45)}
+/* does this caption track capitalise sentence starts? then a period before a lower-case word is not a sentence end ("a.m. we", "approx. ten") */
+function capsAware(tokens){let n=0,c=0;for(let i=0;i+1<tokens.length;i++)if(isEnd(tokens[i].w)){n++;if(/^["'“‘(]?[A-Z0-9]/.test(tokens[i+1].w))c++}return n>=3&&c/n>=0.7}
+function sentenceEndAt(tokens,i,caps){const b=tokens[i+1];if(!isEnd(tokens[i].w))return false;return !b||!caps||/^["'“‘(]?[A-Z0-9]/.test(b.w)}
 const CONJ=new Set(['and','but','so','because','or','which','who','when','if','that','then','while','although','though','where','since','after','before','until','unless','whether']);
 const GLUE=new Set(['a','an','the','to','of','in','on','at','for','with','from','by','my','your','our','their','his','her','its','this','these','those','some','any','very','really','i','we','you','they','he','she','it','is','are','was','were','be','been','have','has','had','do','does','did','will','would','can','could','should','not',"don't","i'm","it's","you're","we're","they're","i've","we've","you've","i'll","we'll","you'll","there's","that's",'just','more','most','as','than','like','about']);
+/* words a sentence can't end on (unlike 'before', 'after', 'since', 'then', 'so', which can: "I tried it before.") */
+const DANGLE=new Set([...GLUE,'and','but','or','nor','because','which','who','whom','whose','when','if','that','while','although','where','whether','unless']);
 const STARTERS=new Set(['so','now','okay','ok','well','i','we','you','this','if','when','what','how','why',"let's",'there',"it's","that's",'today','also','first','second','third','finally','anyway','actually','right','yeah','um','uh','alright','next','here']);
 /* estimated silence after token i (seconds) */
 function silenceAfter(tokens,i){
@@ -855,53 +873,66 @@ function cutScore(tokens,i){
   const a=tokens[i],b=tokens[i+1]; if(!b)return 0;
   if(b.brk)return 30;
   let s=Math.max(0,Math.min(10,silenceAfter(tokens,i)*14));
-  if(isEnd(a.w))s+=12; else if(/[,;:—–]["'”’)]*$/.test(a.w))s+=4;
+  if(isEnd(a.w))s+=12; else if(softEnd(a.w))s+=6; else if(/[,;:—–]["'”’)]*$/.test(a.w))s+=4;
   const pn=norm(a.w),nn=norm(b.w);
   if(CONJ.has(nn)&&!CONJ.has(pn))s+=2; else if(STARTERS.has(nn))s+=1;
-  if(GLUE.has(pn)||CONJ.has(pn))s-=8;       /* never end a line on 'the', 'to', 'and' … */
+  if(DANGLE.has(pn))s-=8;       /* never end a line on 'the', 'to', 'and' … */
   return s;
 }
-const LEN_PREF={short:[4,10,5],mid:[6,15,7],long:[8,22,10]};
+/* [min words, max words, max seconds, cost of each extra cut] */
+const LEN_PREF={short:[4,10,5,4],mid:[6,15,7,4],full:[8,30,15,7],guess:[3,16,8,4]};
+const LEN_NAME={full:'完整句子',mid:'標準',short:'短句'};
+let lenPrefOverride=null;
 function lenCost(n,d){
-  const [lo,hi,dmax]=LEN_PREF[cfg.len]||LEN_PREF.mid;let c=0;
+  const [lo,hi,dmax]=lenPrefOverride||LEN_PREF[cfg.len]||LEN_PREF.full;let c=0;
   if(n<lo)c+=(lo-n)*(n<=2?4:2);
   if(n>hi)c+=(n-hi)*1.6;
   if(d>dmax)c+=(d-dmax)*2.5;
   return c;
 }
-/* best way to cut tokens a..b into sentences: dynamic programming over all cut points */
+/* best way to cut tokens a..b: dynamic programming over all cut points */
 function segmentDP(tokens,a,b){
   const n=b-a+1;if(n<=0)return [];
+  const cutCost=(lenPrefOverride||LEN_PREF[cfg.len]||LEN_PREF.full)[3];
   const best=new Float64Array(n+1).fill(Infinity),from=new Int32Array(n+1);best[0]=0;
   const cs=[];for(let i=a;i<b;i++)cs.push(cutScore(tokens,i));
   for(let j=1;j<=n;j++){
-    for(let i=Math.max(0,j-40);i<j;i++){
+    for(let i=Math.max(0,j-45);i<j;i++){
       if(best[i]===Infinity)continue;
       const x=a+i,y=a+j-1,d=tokens[y].s+estDur(tokens[y].w)-tokens[x].s;
-      const c=best[i]+4+lenCost(j-i,d)-(j<n?cs[j-1]:0);   /* every extra cut must earn at least 4 points */
+      const c=best[i]+cutCost+lenCost(j-i,d)-(j<n?cs[j-1]:0);
       if(c<best[j]){best[j]=c;from[j]=i}
     }
   }
   const out=[];let j=n;while(j>0){const i=from[j];out.unshift([a+i,a+j-1]);j=i}
   return out;
 }
-/* decide sentence groups [[firstIdx,lastIdx],...] */
+/* decide sentence groups [[firstIdx,lastIdx],...]
+   完整句子 (full): with punctuated captions every item is exactly one sentence
+   (period / question / exclamation), never split, never merged. */
 function groupTokens(tokens){
   const n=tokens.length;if(!n)return [];
   calibrateRate(tokens);
-  const punct=tokPunct(tokens);
-  const [,hi,dmax]=LEN_PREF[cfg.len]||LEN_PREF.mid;
+  const punct=tokPunct(tokens), caps=punct&&capsAware(tokens), full=(cfg.len||'full')==='full';
+  const [,hi,dmax]=LEN_PREF[cfg.len]||LEN_PREF.full;
   const blocks=[];let a=0;
   for(let i=0;i<n;i++){
     const b=tokens[i+1];
-    if(!b||b.brk||(punct&&isEnd(tokens[i].w))||silenceAfter(tokens,i)>1.5){blocks.push([a,i]);a=i+1}
+    if(!b||b.brk||(punct&&sentenceEndAt(tokens,i,caps))||(!punct&&silenceAfter(tokens,i)>1.5)){blocks.push([a,i]);a=i+1}
   }
   const out=[];
   for(const [x,y] of blocks){
     const d=tokens[y].s+estDur(tokens[y].w)-tokens[x].s;
-    if(punct&&y-x+1<=hi+8&&d<=dmax+4)out.push([x,y]); else out.push(...segmentDP(tokens,x,y));
+    if(punct&&full){
+      /* a real sentence stays whole; only a runaway one (no period for 60+ words / 40 s) gets cut */
+      if(y-x+1<=60&&d<=40)out.push([x,y]);else{lenPrefOverride=[10,30,15,7];out.push(...segmentDP(tokens,x,y));lenPrefOverride=null}
+    }
+    else if(punct&&y-x+1<=hi+8&&d<=dmax+4)out.push([x,y]);
+    else if(!punct&&full){lenPrefOverride=LEN_PREF.guess;out.push(...segmentDP(tokens,x,y));lenPrefOverride=null}   /* no punctuation: best guess of sentence boundaries */
+    else out.push(...segmentDP(tokens,x,y));
   }
-  const maxW=hi+8;
+  if(punct&&full)return out;
+  const maxW=(full?LEN_PREF.mid[1]:hi)+8;
   for(let i=0;i<out.length;i++){
     const g=out[i];if(g[1]-g[0]+1>2)continue;
     const nx=out[i+1],pv=out[i-1];
@@ -945,7 +976,8 @@ function resegment(){
   if(!segs.length)return;
   const tokens=segsToTokens(segs);
   const list=makeSentences(tokens,groupTokens(tokens),meta.len||0);
-  applySegs(list,'已重新切句：'+list.length+' 句（'+({short:'短句',mid:'標準',long:'長句'}[cfg.len]||'標準')+'）。收藏的句子會保留。',meta.timing);
+  meta.segMode=cfg.len; meta.punct=tokPunct(tokens);
+  applySegs(list,'已重新切句：'+list.length+' 句（'+(LEN_NAME[cfg.len]||'完整句子')+'）。收藏的句子會保留。',meta.timing);
 }
 
 /* ---------- caption text parsing ---------- */
@@ -1008,8 +1040,9 @@ function buildFromPayload(d){
 }
 function applyBuilt(b){
   if(b.len)meta.len=b.len;
+  meta.segMode=cfg.len; meta.punct=!!b.punct;
   meta.diag=b.diag||'';
-  applySegs(b.list,'已匯入'+b.src+'，共 '+b.list.length+' 句。'+(b.punct?'':'這份字幕沒有標點，先依停頓切句；想要完整句子，按「用 Claude 補標點斷句」。')+(b.timing==='coarse'?TIMING.coarse[1]:''),b.timing);
+  applySegs(b.list,'已匯入'+b.src+'，共 '+b.list.length+' 句'+(b.punct&&cfg.len==='full'?'完整句子':'')+'。'+(b.punct?'':'這份字幕沒有標點，目前是依停頓推測的句子；要變成完整句子，按「交給 Claude 補成完整句子」。')+(b.timing==='coarse'?TIMING.coarse[1]:''),b.timing);
   $('#imp').open=(!b.punct||b.timing==='coarse')&&!narrow();
 }
 function importText(text){const b=buildFromPayload({text});if(!b)return false;applyBuilt(b);return true}
@@ -1666,6 +1699,38 @@ function doSplit(k){
 
 /* ---------- rendering: practice ---------- */
 const PLAY='<path d="M7 4v16l13-8z"/>', STOP='<path d="M6 6h12v12H6z"/>';
+/* ---------- notices about how this video is split ---------- */
+function renderSegNote(){
+  const box=$('#segnote');if(!box)return;box.textContent='';
+  let msg=null,btn=null;
+  if(segs.length&&meta.punct===false){msg='這支影片只有 YouTube 自動字幕，沒有標點，目前的句子是依停頓推測的，不一定是完整句子。';btn=h('button',{class:'btn small claude',onclick:()=>openHelper('punct')},'交給 Claude 補成完整句子')}
+  else if(segs.length&&meta.segMode&&meta.segMode!==cfg.len){msg='這支影片目前是「'+(LEN_NAME[meta.segMode]||meta.segMode)+'」的切法。';btn=h('button',{class:'btn small',onclick:resegment},'改成「'+LEN_NAME[cfg.len]+'」')}
+  else if(segs.length&&!meta.segMode&&cfg.len==='full'){msg='這支影片是用舊版切法匯入的，句子可能不完整。';btn=h('button',{class:'btn small primary',onclick:resegment},'改成完整句子')}
+  box.hidden=!msg;if(msg)box.append(h('span',null,msg),btn);
+}
+/* ---------- long sentences: play one phrase at a time ---------- */
+const chunkCache=new Map();let chunkIdx=-1,chunkSeg=-1;
+function sentenceChunks(g){
+  if(!g)return null;const ws=toks(g.t);if(ws.length<=14)return null;
+  const key=g.t+'|'+(hasTs(g)?g.ts.join(','):'');if(chunkCache.has(key))return chunkCache.get(key);
+  const tt=tokenTimes(g),tk=ws.map((w,j)=>({w,s:tt[j],x:hasTs(g)&&(g.tx||meta.timing==='word')?1:0}));
+  lenPrefOverride=[4,10,5,2];const gr=segmentDP(tk,0,tk.length-1);lenPrefOverride=null;
+  const res=gr.length>1?gr:null;chunkCache.set(key,res);return res;
+}
+function playChunk(){
+  const g=segs[cur];if(!g)return;const ch=sentenceChunks(g);if(!ch){practice(cur);return}
+  if(chunkSeg!==cur){chunkSeg=cur;chunkIdx=-1}
+  chunkIdx=(chunkIdx+1)%(ch.length+1);
+  const tt=tokenTimes(g),o=OFF();
+  if(chunkIdx===ch.length)startWin(g.s+o,g.e+o,'once',{i:cur});
+  else{const [a,b]=ch[chunkIdx];const s=a===0?g.s:Math.max(g.s,tt[a]-0.12),e=b===tt.length-1?g.e:Math.min(g.e,tt[b+1]-0.03);startWin(s+o,e+o,'once',{i:cur})}
+  renderChunkBtn();
+}
+function renderChunkBtn(){
+  const b=$('#bchunk');if(!b)return;const g=segs[cur],ch=sentenceChunks(g);
+  b.hidden=!ch||cfg.mode==='dict';if(!ch)return;
+  b.textContent=chunkSeg===cur&&chunkIdx>=0?(chunkIdx===ch.length?'分段：整句':'分段 '+(chunkIdx+1)+' / '+ch.length):'分段播放';
+}
 function renderMbar(){
   const bar=$('#mbar');if(!bar)return;
   const show=narrow()&&!!vid&&segs.length>0&&!$('#viewPractice').hidden&&!transportVisible&&$('#sheet').hidden&&$('#helper').hidden&&$('#exporter').hidden;
@@ -1710,10 +1775,12 @@ function renderNow(g){
     updateBlind();return;
   }
   const known=knownSet();
+  const ch=sentenceChunks(g),ends=new Set(ch?ch.slice(0,-1).map(c=>c[1]):[]);
+  n.classList.toggle('chunked',!!ch);
   toks(g.t).forEach((tok,k)=>{
     if(k)n.appendChild(document.createTextNode(' '));
     const w=wordOf(tok), isW=!!w&&/[A-Za-z]/.test(w);
-    n.appendChild(h('span',{'data-k':k,class:isW?'wd'+(known.has(w.toLowerCase())?' known':''):null,'data-w':isW?w:null},tok));
+    n.appendChild(h('span',{'data-k':k,class:((isW?'wd'+(known.has(w.toLowerCase())?' known':''):'')+(ends.has(k)?' cb':''))||null,'data-w':isW?w:null},tok));
   });
   updateBlind();
 }
@@ -1749,7 +1816,7 @@ function renderCurrent(){
   $('#ts_s').textContent=g?fmt2(g.s):'—'; $('#ts_e').textContent=g?fmt2(g.e):'—';
   if(document.activeElement!==$('#edittext'))$('#edittext').value=g?g.t:'';
   $('#delconfirm').textContent=''; delArmed=false;
-  renderDots(); renderRec(); renderTiming();
+  renderDots(); renderRec(); renderTiming(); renderSegNote(); renderChunkBtn();
   if(!$('#anacard').hidden)analyze();
 }
 function renderRec(){
@@ -1820,7 +1887,7 @@ function renderSettings(){
   mk('#sgap',[[0,'不停'],[0.5,'0.5×句長'],[1,'1×'],[1.5,'1.5×']],'gap');
   $('#cauto').checked=cfg.auto; $('#cblind').checked=cfg.blind; $('#crecsync').checked=cfg.recSync; $('#chl').checked=cfg.hl; $('#clink').checked=cfg.link;
 }
-function renderLen(){$('#slen').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.l===(cfg.len||'mid')))}
+function renderLen(){$('#slen').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.l===(cfg.len||'full')))}
 function renderAll(){renderLen();renderSettings();renderModeUI();renderCurrent();renderList();markList(true);renderProgress();renderPlayIcon();renderAccentChip()}
 
 /* ---------- sentence structure ---------- */
@@ -2296,12 +2363,12 @@ function buildTask(task,opts){
     const ref=segsToTokens(segs.slice(from));
     const words=ref.map(w=>w.w.replace(/[.?!,;:]/g,'')).filter(Boolean);
     const exact=ref.length&&ref.filter(t=>t.x).length/ref.length>0.8;
-    return {desc:(from?'從 '+fmt(segs[from].s)+' 接續上次的進度，':'')+'把字幕（'+words.length+' 個字）交給 Claude 加上標點，並斷成適合跟讀的句子。'+(exact?'匯入時會沿用原本的逐字時間，切點不會跑掉。':'')+(words.length>4500?'內容很長，Claude 可能只處理前面一段；匯入後可以再執行一次接著做。':''),
+    return {desc:(from?'從 '+fmt(segs[from].s)+' 接續上次的進度，':'')+'把字幕（'+words.length+' 個字）交給 Claude 加上標點，'+(cfg.len==='full'?'變成一句一行的完整句子。':'並斷成適合跟讀的句子。')+''+(exact?'匯入時會沿用原本的逐字時間，切點不會跑掉。':'')+(words.length>4500?'內容很長，Claude 可能只處理前面一段；匯入後可以再執行一次接著做。':''),
       ctx:{ref,from},
       prompt:P_HEAD+`請幫我把下面這段 YouTube 字幕（語音辨識結果，沒有標點）加上標點並斷句，用於英文跟讀練習。
 規則：
 1. 保留完全相同的英文單字與順序，只加標點、修正大小寫。不要增加、刪除、改寫任何字（口頭禪、重複的字也保留）。
-2. 斷成適合跟讀的句子：每句 5–20 個字為佳；太長的口語句子在自然的子句處切開。
+${cfg.len==='full'?'2. 每行剛好一個完整的句子（以句號、問號或驚嘆號結尾）。不要把一個句子拆成多行，也不要把兩個句子放在同一行。':'2. 斷成適合跟讀的句子：每句 5–20 個字為佳；太長的口語句子在自然的子句處切開。'}
 3. 每句一行，全部放在同一個 code block 裡。不要編號，不要其他說明。
 
 影片：${title}
@@ -2401,6 +2468,7 @@ function importTask(task,text,ctx){
     const keep=segs.slice(0,ctx.from).map(g=>Object.assign({},g));
     const cover=full?0:ref[p].s;
     meta.punctUntil=full?0:cover;
+    meta.punct=true; meta.segMode=cfg.len;
     applySegs(keep.concat(fresh),'Claude 斷句完成，共 '+(keep.length+fresh.length)+' 句'+(full?'。':'；'+fmt(cover)+' 之後是自動切句，可以再執行一次。'),meta.timing);
     return 'Claude 斷句已匯入。'+(full?'':'Claude 處理到 '+fmt(cover)+'，再執行一次「補標點斷句」就會接著做後面。');
   }
@@ -2805,7 +2873,8 @@ $('#bsreview').addEventListener('click',toDetail('#sdetail'));
 $('#bexp').onclick=openExporter;
 $('#benrich').onclick=enrichAll;
 $('#bresplit').onclick=resegment;
-$('#slen').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cfg.len=b.dataset.l;saveCfg();renderLen()});
+$('#slen').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;cfg.len=b.dataset.l;saveCfg();renderLen();if(segs.length)resegment();else renderSegNote()});
+$('#bchunk').onclick=playChunk;
 $('#offEarly').onclick=()=>shiftVideo(-0.1);
 $('#offLate').onclick=()=>shiftVideo(0.1);
 $('#offReset').onclick=()=>{delete meta.offset;save();renderOffsets()};
@@ -2836,6 +2905,7 @@ document.addEventListener('keydown',e=>{
   else if(k==='h'){cfg.blind=!cfg.blind;saveCfg();renderSettings();updateBlind()}
   else if(k==='s'){toggleStar(cur)}
   else if(k==='x'){if(splitMode)exitSplit();else enterSplit()}
+  else if(k==='g'){playChunk()}
   else if(k==='d'&&cfg.mode==='dict'){e.preventDefault();$('#dictin').focus()}
   else if(k==='m'){mark()}
   else if(k==='e'){openExporter()}
@@ -2846,8 +2916,8 @@ document.addEventListener('keydown',e=>{
 renderSettings(); renderModeUI(); renderRecent(); saveVocab(); renderZh();
 $('#scount').textContent=Object.values(starIndex()).reduce((a,b)=>a+b,0);
 $('#bmlink').href='javascript:'+encodeURIComponent(bookmarkletCode());
-window.__SL={syl,calibrateRate,segmentDP,ctxMeaning,ctxPos,enrichVocab,autoNotes,buildTxt,buildSrt,buildCsv,expRows,resegment,parseTimed,fragsToTokens,json3ToTokens,alignToRef,groupTokens,makeSentences,buildFromPayload,segsToTokens,tokenTimes,diffWords,parseId,parseJSON,bookmarkletCode,analyzeLocal,lemmaCandidates,translateBatch,lookupDict,
-  _state:()=>({mode,win,cur,segs,repsDone,cfg,splitMode,dictChecked}),_api:{renderMbar,shareCode,shiftVideo,shiftHl,openExporter,practice,togglePlay,setMode,enterSplit,doSplit,adjust,toggleStar,checkDict,receivePayload,showView,select,stopAll}};
+window.__SL={isEnd,capsAware,syl,calibrateRate,segmentDP,ctxMeaning,ctxPos,enrichVocab,autoNotes,buildTxt,buildSrt,buildCsv,expRows,resegment,parseTimed,fragsToTokens,json3ToTokens,alignToRef,groupTokens,makeSentences,buildFromPayload,segsToTokens,tokenTimes,diffWords,parseId,parseJSON,bookmarkletCode,analyzeLocal,lemmaCandidates,translateBatch,lookupDict,
+  _state:()=>({mode,win,cur,segs,repsDone,cfg,splitMode,dictChecked}),_api:{playChunk,sentenceChunks,renderMbar,shareCode,shiftVideo,shiftHl,openExporter,practice,togglePlay,setMode,enterSplit,doSplit,adjust,toggleStar,checkDict,receivePayload,showView,select,stopAll}};
 })();
 
 </script>
